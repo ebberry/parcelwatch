@@ -124,8 +124,28 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
   geography chapter); zoning layer 450 field names (for authoritative-zoning
   cross-check vs the Assessor's `KCA_ZONING`).
 
+## Slice 3 — hazards & environment (verified 2026-05-31)
+
+### FEMA National Flood Hazard Layer (NFHL)
+- ⛔ **Dead path:** `hazards.fema.gov/gis/nfhl/rest/...` (404).
+- ✅ **Live:** `https://hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer` (currentVersion 11.1).
+- **Layer 28** = "Flood Hazard Zones". Point query (geometryType=esriGeometryPoint, inSR=4326, spatialRelIntersects).
+- Fields used: `FLD_ZONE`, `ZONE_SUBTY`, `SFHA_TF` (T/F), `STATIC_BFE`, `DFIRM_ID`.
+- ⚠️ `STATIC_BFE = -9999` is a "no BFE" sentinel → normalize to null. `FIRM_PAN` is NOT on layer 28 (caused a 400).
+- Confirmed: inland Vashon → Zone X (SFHA F); near-shore → Zone VE (SFHA T, BFE 15 ft).
+
+### USGS Earthquake Catalog
+- ✅ Keyless GeoJSON: `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=&longitude=&maxradiuskm=&starttime=&minmagnitude=&orderby=time`
+- We query 100 km / past 365 days / M2.5+. Feature: `properties.{mag,place,time(ms),url}`, `geometry.coordinates [lon,lat,depthKm]`.
+- Distance from parcel computed locally (haversine).
+
+### Deferred within Slice 3 (documented, not silently skipped)
+- **EPA Envirofacts** — no clean radius/point query; needs FRS geospatial work.
+- **WA Dept of Ecology** (shoreline/critical areas) and **WA DOH** drinking-water (Sentry).
+
 ## To verify before later slices
 
+- [ ] EPA FRS geospatial endpoint + WA Ecology/DOH (Slice 3b).
 - [ ] Urban R-zone dimensional standards (when extending the zoning engine).
 - [ ] Zoning layer 450 field names (authoritative-zoning cross-check).
 - [ ] King County Assessor bulk roll — periodic download for full sale history.

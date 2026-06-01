@@ -3,10 +3,12 @@ import Link from "next/link";
 import { getParcelCore } from "@/lib/parcels/service";
 import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
+import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { ReportPanel, Field } from "@/components/ReportPanel";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
+import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 
 export async function generateMetadata({
@@ -50,6 +52,11 @@ export default async function ParcelPage({
   const assessment = p?.assessment ?? null;
   const taxCalendar = getTaxCalendar();
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
+  // Hazard sources are independent — fetch them concurrently.
+  const [flood, seismic] = await Promise.all([
+    getFloodHazard(p?.lat ?? null, p?.lon ?? null),
+    getSeismicActivity(p?.lat ?? null, p?.lon ?? null),
+  ]);
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-10">
@@ -133,6 +140,10 @@ export default async function ParcelPage({
             </ReportPanel>
 
             <ZoningPanel sourced={zoning} />
+
+            <FloodPanel sourced={flood} />
+
+            <SeismicPanel sourced={seismic} />
 
             <TaxDeadlines sourced={taxCalendar} />
 

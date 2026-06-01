@@ -4,6 +4,39 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Slice 3: hazards & environment (FEMA + USGS)
+
+### Proves the adapter pattern: two new independent sources, zero core changes
+**Why:** FEMA flood and USGS quakes became `DataSourceAdapter`s
+(`fema.flood`, `usgs.earthquakes`) consumed through the same `runAdapter` +
+`SourceCache` + `SourcedValue` plumbing as King County — validating the core
+architectural bet (new source = new adapter). Each point/radius-queries off the
+parcel's lat/lon, which we already have.
+
+### Scoped to FEMA + USGS; EPA / WA Ecology / WA DOH deferred (honest, not silent)
+**Why:** FEMA and USGS are clean keyless point/radius queries. EPA Envirofacts
+has no clean radius endpoint and would rabbit-hole; WA Ecology/DOH are more
+involved. Per the brief's "build vertical slices, ship quality," we shipped two
+solid sources rather than half-implementing five, and documented the deferral in
+data-sources.md rather than pretending coverage is complete.
+
+### FEMA endpoint corrected live (Rule #1)
+**Why:** The well-known `hazards.fema.gov/gis/nfhl/...` path is dead (404); the
+live host is `hazards.fema.gov/arcgis/rest/services/public/NFHL/MapServer`,
+layer 28 = "Flood Hazard Zones". Also: `STATIC_BFE = -9999` is a "no base flood
+elevation" sentinel — normalized to null, never shown as a real elevation. A
+point with no flood polygon → `mapped: false` ("not in mapped flood data"), an
+honest state, not an error.
+
+### USGS raw carries the query origin so normalize stays pure
+**Why:** Distance-from-parcel needs the origin point, which isn't in the USGS
+response. `fetchRaw` returns `{ origin, response }` so `normalize` can compute
+haversine distances deterministically (and be unit-tested on a saved fixture).
+Quiet state is reassuring by design: zero quakes → a green "nothing recorded"
+panel, not a blank.
+
+---
+
 ## 2026-05-31 — Zoning "what can I do here?" engine
 
 ### The brief's KCC citation was stale — verified the current section (Rule #1 win)
