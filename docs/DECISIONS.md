@@ -4,6 +4,45 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Slice 5: the watches (infra + first standing watch)
+
+### Native Homebrew Postgres + Redis (not Docker), PostGIS deferred
+**Why:** Docker wasn't installed and a container runtime (Colima) is a heavy VM.
+Postgres 16 + Redis install natively via Homebrew as background services — lighter
+and faster on this machine. `docker-compose.yml` stays as the portable alternative.
+**PostGIS deferred:** the watches we can build are topic/legislation monitors, not
+geospatial; nothing in the app needs PostGIS yet (all geo via ArcGIS + haversine),
+and it's the heavy install (GDAL). Add it when a feature requires it. (The aborted
+PostGIS install also caused a transient disk-full — `brew cleanup` reclaimed it.)
+
+### Watch sources: Legistar verified; permits & recorder have NO API
+**Why (Rule #1):** King County publishes **no** queryable permits or recorder
+endpoint — Accela (permits) and Landmark Web (recorder) are interactive portals
+whose terms forbid scraping. So those watches are deferred/documented, not faked.
+**King County Council via the Legistar Web API** (`webapi.legistar.com/v1/kingcounty/`,
+keyless) and the **WA Legislature web services** ARE clean — built the council
+watch first; WA Leg is next (its session is out now, so it's quiet until January).
+
+### Baseline-seed on first poll (no first-run alert flood)
+**Why:** The first poll for a source would otherwise turn every existing item into
+an "alert." The engine seeds the baseline silently on first run (records all
+current ids as seen, 0 alerts) and only alerts on genuinely new ids thereafter.
+Verified end-to-end: baseline → simulate a new item → exactly 1 alert.
+
+### BullMQ connection via options object, not an ioredis instance
+**Why:** BullMQ bundles its own ioredis; passing a top-level ioredis instance
+clashed types. We hand BullMQ `{ host, port, maxRetriesPerRequest: null }` so it
+owns its client, and removed the redundant top-level ioredis dep. Worker
+(`npm run worker`, tsx) registers a repeatable 6-hour poll.
+
+### Live "in motion" panel vs. the durable alert feed
+**Why:** Two complementary views. The report's "In motion — King County Council"
+panel is an always-on live display of topic-matched legislation (immediate value,
+no infra needed). The standing-watch engine (Postgres state + diff + alerts feed +
+scheduler) is what accumulates personalized alerts over time — the recurring moat.
+
+---
+
 ## 2026-05-31 — Slices 3b + 4: EPA, WA DOH, NWS, Census (area & environment)
 
 ### Generic ArcGIS point-query helper for multi-source fan-out

@@ -184,8 +184,19 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
   contamination footprint; geometry is State Plane (wkid 2927) and reprojection
   to 4326 drops rows. Needs footprint/proj handling before it's trustworthy.
 
+## Slice 5 — the watches (verified 2026-05-31)
+
+- ✅ **King County Council (Legistar Web API)** — `https://webapi.legistar.com/v1/kingcounty/matters?$top=N&$orderby=MatterIntroDate desc` (keyless, `Accept: application/json`). Fields: `MatterId`, `MatterFile`, `MatterName`/`MatterTitle`, `MatterTypeName`, `MatterStatusName`, `MatterIntroDate`. Topic-filter on the title. (`/events` gives agendas.) **Built.**
+- ✅ **WA Legislature web services** — `https://wslwebservices.leg.wa.gov/legislationservice.asmx/GetLegislationByYear?year=YYYY` (+ `GetLegislation`, `GetLegislationIntroducedSince`), keyless XML. Session runs ~Jan–Apr, so it's quiet out of session. **Next.**
+- ⛔ **King County permits** — NO API. Only the Accela Citizen Access portal (interactive) or records request. Deferred.
+- ⛔ **King County recorder (title/lien watch)** — NO API. Landmark Web portal; ToS forbids automated access. Deferred (needs a vendor feed / records arrangement).
+
+Infra: native Homebrew **Postgres 16** + **Redis** (background services); watch state in
+Postgres (`watches`, `watch_seen`, `alerts`); **BullMQ** scheduler (`npm run worker`).
+
 ## To verify before later slices
 
+- [ ] WA Legislature: in-session incremental polling (GetLegislationIntroducedSince) + per-bill titles.
 - [ ] WA Ecology cleanup sites — proper footprint + projection handling (Tacoma Smelter Plume affects Vashon).
 - [ ] King County real-property **sales** source (bulk EXTR_RPSale) for sale-based comps.
 - [ ] EPA FRS geospatial endpoint + WA Ecology/DOH (Slice 3b).

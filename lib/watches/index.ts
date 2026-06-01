@@ -1,31 +1,30 @@
 /**
- * The watches — the subscription moat (project brief §6, Slice 5).
+ * The watches — standing monitors that poll a source, diff against last-seen
+ * state, and emit alerts (project brief §6, Slice 5). Built on the verified
+ * keyless sources: King County Council (Legistar) and the WA Legislature.
  *
- * Scheduled pollers fetch a source, diff against last-seen state, and emit a
- * user-facing alert carrying provenance. Built in Phase 5 on BullMQ workers
- * (see /jobs). Phase 0 defines the shape only.
+ * Permits and recorder watches are deferred — King County exposes no API for
+ * either (Accela / Landmark are interactive portals whose terms forbid scraping;
+ * see /docs/data-sources.md).
  *
- * Privacy: the recorder/title watch is owner-consented and the OWNER'S parcel
- * only. We never compile or expose information keyed to third parties by name.
+ * Privacy: these watches track public legislation/agendas by topic, not people.
  */
 
-export type WatchKind =
-  | "permits-nearby"
-  | "title-recorder" // owner's own parcel only
-  | "council-agenda"
-  | "legislature-bills";
+export type WatchKind = "council" | "legislature";
 
-export interface WatchAlert {
+/** A single item surfaced by a source (a council matter, a bill). */
+export interface WatchItem {
   kind: WatchKind;
+  /** Stable id from the source, used for diffing (only alert on new ids). */
+  externalId: string;
   title: string;
-  detail: string;
-  source: string;
-  /** ISO timestamp this change was observed. */
-  observedAt: string;
+  /** Secondary line, e.g. type + status. */
+  detail: string | null;
+  url: string | null;
+  /** ISO date the item was introduced/updated. */
+  date: string | null;
+  /** Topic keys this item matched. */
+  topics: string[];
 }
 
-export interface Watch<TState> {
-  kind: WatchKind;
-  /** Fetch current state, diff against `previous`, return any new alerts. */
-  poll(previous: TState | null): Promise<{ state: TState; alerts: WatchAlert[] }>;
-}
+export { TOPICS, type Topic, topicLabel, matchTopics } from "./topics";

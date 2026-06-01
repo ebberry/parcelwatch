@@ -20,6 +20,8 @@ import {
   NearbySitesPanel,
   NeighborhoodPanel,
 } from "@/components/EnvironmentPanels";
+import { ActivityPanel } from "@/components/ActivityPanel";
+import { getCouncilActivity } from "@/lib/watches/service";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 
 export async function generateMetadata({
@@ -67,13 +69,15 @@ export default async function ParcelPage({
   // Environment + area sources are independent — fetch them concurrently.
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, epa, water, neighborhood] = await Promise.all([
-    getFloodHazard(lat, lon),
-    getSeismicActivity(lat, lon),
-    getEpaSites(lat, lon),
-    getWaterSystems(lat, lon),
-    getNeighborhoodStats(lat, lon),
-  ]);
+  const [flood, seismic, epa, water, neighborhood, councilActivity] =
+    await Promise.all([
+      getFloodHazard(lat, lon),
+      getSeismicActivity(lat, lon),
+      getEpaSites(lat, lon),
+      getWaterSystems(lat, lon),
+      getNeighborhoodStats(lat, lon),
+      getCouncilActivity(),
+    ]);
   const needsCensusKey = !censusKeyConfigured();
 
   return (
@@ -189,6 +193,8 @@ export default async function ParcelPage({
             />
 
             <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
+
+            <ActivityPanel sourced={councilActivity} />
 
             <TaxDeadlines sourced={taxCalendar} />
 
