@@ -26,7 +26,9 @@ import { getCouncilActivity } from "@/lib/watches/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { titleCaseAddress } from "@/lib/format";
-import { Panel, Field, MetricTile, StatusStrip } from "@/components/Panel";
+import { Panel, Field, MetricTile } from "@/components/Panel";
+import { summarizeFindings } from "@/lib/report/summary";
+import { ReportSummary } from "@/components/ReportSummary";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
 import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
@@ -84,7 +86,6 @@ export default async function ParcelPage({
       p ? getSaleComps(p) : Promise.resolve(null),
     ]);
   const needsCensusKey = !censusKeyConfigured();
-  const inFloodHazard = flood.value?.inSFHA === true;
   const recommendation = p
     ? buildRecommendation({
         assessedTotal: p.assessment?.appraisedTotal ?? null,
@@ -92,6 +93,14 @@ export default async function ParcelPage({
         comp: compSv?.value ?? null,
       })
     : null;
+  const findings = summarizeFindings({
+    recommendation,
+    flood: flood.value,
+    seismic: seismic.value,
+    epa: epa.value,
+    councilCount: councilActivity.value?.length ?? 0,
+    tax: taxCalendar.value,
+  });
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
@@ -139,11 +148,7 @@ export default async function ParcelPage({
             </p>
           </header>
 
-          <StatusStrip tone={inFloodHazard ? "attention" : "clear"}>
-            {inFloodHazard
-              ? "Heads up — this parcel sits in a high-risk flood area."
-              : "All clear — nothing here needs your attention today."}
-          </StatusStrip>
+          <ReportSummary findings={findings} />
 
           <div className="mt-5 flex flex-col gap-4">
             <Panel title="What you own" icon={Home} sourced={sv}>
@@ -190,7 +195,11 @@ export default async function ParcelPage({
               </dl>
             </Panel>
 
-            {recommendation && <AppealCallout pin={p.pin} rec={recommendation} />}
+            {recommendation && (
+              <div id="appeal" className="scroll-mt-4">
+                <AppealCallout pin={p.pin} rec={recommendation} />
+              </div>
+            )}
 
             <Panel title="Lot" icon={Ruler} sourced={sv}>
               <dl className="divide-y-[0.5px] divide-pw-divider">
@@ -201,16 +210,22 @@ export default async function ParcelPage({
 
             <ZoningPanel sourced={zoning} />
 
-            <FloodPanel sourced={flood} />
+            <div id="flood" className="scroll-mt-4">
+              <FloodPanel sourced={flood} />
+            </div>
 
-            <SeismicPanel sourced={seismic} />
+            <div id="seismic" className="scroll-mt-4">
+              <SeismicPanel sourced={seismic} />
+            </div>
 
-            <NearbySitesPanel
-              title="EPA-regulated sites nearby"
-              icon={Factory}
-              sourced={epa}
-              noneMessage="No EPA-regulated facilities within 2 miles."
-            />
+            <div id="epa" className="scroll-mt-4">
+              <NearbySitesPanel
+                title="EPA-regulated sites nearby"
+                icon={Factory}
+                sourced={epa}
+                noneMessage="No EPA-regulated facilities within 2 miles."
+              />
+            </div>
 
             <WaterPanel
               parcelId={p.pin}
@@ -224,9 +239,13 @@ export default async function ParcelPage({
 
             <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
 
-            <ActivityPanel sourced={councilActivity} />
+            <div id="activity" className="scroll-mt-4">
+              <ActivityPanel sourced={councilActivity} />
+            </div>
 
-            <TaxDeadlines sourced={taxCalendar} />
+            <div id="tax" className="scroll-mt-4">
+              <TaxDeadlines sourced={taxCalendar} />
+            </div>
 
             <section
               aria-label="Official county record"
