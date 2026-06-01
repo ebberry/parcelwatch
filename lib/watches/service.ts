@@ -2,21 +2,49 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { watches, alerts } from "@/db/schema";
 import { fetchCouncilItems } from "./sources/council";
+import {
+  attachCachedInsights,
+  relevanceRank,
+  type CouncilInsight,
+} from "@/lib/ai/council";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
 import type { WatchItem } from "./index";
 
 const COUNCIL_LABEL = "King County Council (Legistar)";
 
+/** A council item plus its cached AI insight (null when AI is off / not yet run). */
+export interface CouncilFeedItem extends WatchItem {
+  insight: CouncilInsight | null;
+}
+
 /**
- * Live "what's in motion" — current King County Council legislation matching
- * tracked topics. This is the always-on display; the durable alert feed (below)
- * is what diffs over time. Degrades to unavailable if Legistar is unreachable.
+ * Live "what's in motion" — current King County Council legislation. When AI
+ * enrichment is available we attach the cached insight, drop items the model
+ * judged irrelevant ("none"), and sort most-relevant first. With no AI (or
+ * before the worker has enriched), it behaves exactly as before. The durable
+ * alert feed (below) is what diffs over time.
  */
-export async function getCouncilActivity(limit = 8): Promise<SourcedValue<WatchItem[]>> {
+export async function getCouncilActivity(
+  limit = 8,
+): Promise<SourcedValue<CouncilFeedItem[]>> {
   try {
     const items = await fetchCouncilItems();
+    const insights = await attachCachedInsights(items);
+    let feed: CouncilFeedItem[] = items.map((it) => ({
+      ...it,
+      insight: insights.get(it.externalId) ?? null,
+    }));
+    if (insights.size > 0) {
+      feed = feed
+        .filter((f) => !f.insight || f.insight.relevance !== "none")
+        .sort(
+          (a, b) =>
+            relevanceRank(a.insight?.relevance ?? "low") -
+            relevanceRank(b.insight?.relevance ?? "low"),
+        );
+    }
     return {
-      value: items.slice(0, limit),
+      value: feed.slice(0, limit),
       source: COUNCIL_LABEL,
       fetchedAt: new Date().toISOString(),
       confidence: "live",

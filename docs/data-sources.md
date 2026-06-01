@@ -282,6 +282,30 @@ runs inside `runAllWatches()` → BullMQ worker.
 - ⛔ **permits** — still no API (deferred, above); the engine is extensible for it.
 - Privacy: built-environment facts only (assessed values, sales) — never owner names.
 
+### 🤖 AI layer (Claude) for council items — 2026-06-01
+
+The first (and only) paid external dependency: the Anthropic Messages API
+(`lib/ai/claude.ts`, raw fetch, no SDK). Gated by `ANTHROPIC_API_KEY` — unset =
+every AI feature degrades to the prior keyword/title behavior (verified: report
+renders identically with no key).
+
+- **What it does** (`lib/ai/council.ts`): for each council item, judges
+  **relevance** to a Vashon/rural homeowner (`high|medium|low|none` + `scope`)
+  and writes a plain-language **summary** + **why-it-matters**. Fixes the keyword
+  filter's false positives — e.g. the *City of* Shoreline matching the
+  "shoreline" topic, or a site-specific mainland project.
+- **Grounding (trust):** the prompt forbids outside knowledge / invented
+  specifics — summarize ONLY the provided Legistar text. Output is labeled
+  "AI summary", visually distinct from the authoritative source; the official
+  link is always present.
+- **Cost control:** small model (Haiku) default; cached in Postgres
+  (`ai_summaries`, keyed by content hash). The WORKER enriches (writes); the
+  request path only READS the cache — no AI call or cost on a page view.
+- **Alert quality:** the council poller suppresses alerts the model judged
+  irrelevant and uses the why-it-matters as the alert detail.
+- Pulls the full legal `MatterTitle` (now `WatchItem.fullText`) so the model has
+  the location/specifics needed to judge "too far away".
+
 Infra: native Homebrew **Postgres 16** + **Redis** (background services); watch state in
 Postgres (`watches` incl. `snapshot`, `watch_seen`, `alerts`); **BullMQ** scheduler (`npm run worker`).
 

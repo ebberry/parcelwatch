@@ -29,11 +29,15 @@ export function normalizeCouncil(raw: KcMatter[]): WatchItem[] {
     const topics = matchTopics(`${m.MatterName ?? ""} ${m.MatterTitle ?? ""}`);
     if (!topics.length) continue;
     const detail = [m.MatterTypeName, m.MatterStatusName].filter(Boolean).join(" · ") || null;
+    // The full legal title often carries the location/specifics the AI needs to
+    // judge relevance (e.g. a street address in a mainland city).
+    const fullText = (m.MatterTitle ?? "").replace(/\s+/g, " ").trim() || null;
     items.push({
       kind: "council",
       externalId: `kc-matter-${m.MatterId}`,
       title: m.MatterFile ? `${m.MatterFile}: ${title}` : title,
       detail,
+      fullText: fullText && fullText !== title ? fullText : null,
       url: `https://kingcounty.legistar.com/LegislationDetail.aspx?ID=${m.MatterId}`,
       date: m.MatterIntroDate ?? null,
       topics,

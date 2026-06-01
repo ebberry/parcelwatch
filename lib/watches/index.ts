@@ -44,6 +44,8 @@ export interface WatchItem {
   title: string;
   /** Secondary line, e.g. type + status. */
   detail: string | null;
+  /** Full source text (e.g. the legal MatterTitle) — grounding for AI summaries. */
+  fullText: string | null;
   url: string | null;
   /** ISO date the item was introduced/updated. */
   date: string | null;

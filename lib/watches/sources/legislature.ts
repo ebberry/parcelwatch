@@ -95,6 +95,7 @@ export function normalizeLegislature(bills: WaLegBill[]): WatchItem[] {
       externalId: `wa-leg-${b.biennium}-${b.billId.replace(/\s+/g, "-")}`,
       title: `${b.billId}: ${b.shortDescription ?? b.longDescription ?? "No description"}`,
       detail: b.currentStatus ?? null,
+      fullText: b.longDescription ?? null,
       url: `https://app.leg.wa.gov/billsummary?BillNumber=${b.billNumber}&Year=${b.biennium.slice(0, 4)}&Initiative=false`,
       date: null,
       topics,

@@ -5,6 +5,7 @@ import { fetchCouncilItems } from "./sources/council";
 import { fetchNewBills, normalizeLegislature, sinceDate } from "./sources/legislature";
 import { JURISDICTION_KINDS, type WatchItem, type JurisdictionWatchKind } from "./index";
 import { runParcelWatches, type ParcelPollResult } from "./parcel";
+import { enrichAndCacheCouncil, isRelevant, type CouncilInsight } from "@/lib/ai/council";
 
 export const SOURCE_LABEL: Record<JurisdictionWatchKind, string> = {
   council: "King County Council (Legistar)",
@@ -39,6 +40,11 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
   const db = getDb();
   const items = await fetchItems(kind);
 
+  // AI enrichment for council items (relevance + plain-language "why it matters").
+  // Populates the cache the live feed reads; no-op when AI is disabled.
+  const insights: Map<string, CouncilInsight> =
+    kind === "council" ? await enrichAndCacheCouncil(items) : new Map();
+
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(watchSeen)
@@ -71,6 +77,12 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
     if (!inserted.length) continue; // already seen
     newItems++;
 
+    // When AI judged a council item, suppress alerts it deemed not worth one
+    // (irrelevant / far-away). With no insight we keep the topic-based behavior.
+    const insight = insights.get(item.externalId);
+    if (insight && !isRelevant(insight)) continue;
+    const detail = insight?.whyItMatters ?? item.detail;
+
     for (const sub of subs) {
       const subTopics = sub.topics ?? [];
       const relevant = subTopics.length === 0 || item.topics.some((t) => subTopics.includes(t));
@@ -80,9 +92,9 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
         parcelId: sub.parcelId,
         kind,
         title: item.title,
-        detail: item.detail,
+        detail,
         url: item.url,
-        source: SOURCE_LABEL[kind],
+        source: insight ? `${SOURCE_LABEL[kind]} · AI summary` : SOURCE_LABEL[kind],
         topics: item.topics,
         observedAt: item.date ? new Date(item.date) : null,
       });

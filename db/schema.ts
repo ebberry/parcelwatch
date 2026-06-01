@@ -51,6 +51,20 @@ export const watchSeen = pgTable(
   (t) => ({ pk: uniqueIndex("watch_seen_pk").on(t.kind, t.externalId) }),
 );
 
+/**
+ * Cached AI enrichments (Claude) — keyed by the source item's external id. The
+ * content hash lets us re-summarize only when the underlying item text changes;
+ * otherwise we serve the cached JSON for free. Worker writes, request path reads.
+ */
+export const aiSummaries = pgTable("ai_summaries", {
+  externalId: text("external_id").primaryKey(),
+  kind: text("kind").notNull(),
+  contentHash: text("content_hash").notNull(),
+  data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Generated alerts — the in-app feed. */
 export const alerts = pgTable(
   "alerts",
