@@ -162,9 +162,17 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - Fields: `REGISTRY_ID`, `PRIMARY_NAME`, `PGM_SYS_ACRNM`, `LATITUDE83`, `LONGITUDE83`.
   De-dupe by `REGISTRY_ID` (one row per program). Distances sane (0.1–1.3 km on Vashon).
 
-### WA DOH drinking-water systems — ✅ shipped
-- `https://services8.arcgis.com/rGGrs6HCnw87OFOT/arcgis/rest/services/Drinking_Water_Systems/FeatureServer/0/query`
-- Fields: `WS_Name`, `WS_Grp` (A/B), `WS_Status`. No lat/lon fields → read geometry (outSR=4326).
+### WA DOH drinking water — ✅ shipped (the address's serving system)
+- **Who serves this address** = the service-area polygon containing the point:
+  `.../Drinking_Water_Service_Areas/FeatureServer/0/query` with
+  `geometry=lon,lat&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects`.
+  Fields: `WS_Name`, `WS_Grp` (A/B), `WS_Type`, `WS_Status`, `Ownership`, `Total_Conn`.
+  Confirmed: a Seattle point → "Seattle Public Utilities"; the rural Vashon parcel
+  → 0 features (not in any mapped service area — wells / small Group B systems).
+- **Not-found fallback:** owner searches the systems layer by name
+  (`.../Drinking_Water_Systems/FeatureServer/0/query?where=UPPER(WS_Name) LIKE '%…%'`)
+  and picks/enters their supplier; the choice is saved per-parcel in localStorage
+  (migrates to the account once auth lands).
 
 ### NWS active weather alerts — ⛔ DROPPED (product fit)
 - Verified working (`https://api.weather.gov/alerts/active?point=<lat>,<lon>`, needs a

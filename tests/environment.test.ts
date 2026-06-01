@@ -1,11 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { epaFrsAdapter, type RawEpa } from "@/lib/adapters/epa/sites";
-import { dohWaterAdapter, type RawDoh } from "@/lib/adapters/doh/water";
 import { buildNearbySites } from "@/lib/environment/nearby";
 
 // Real responses captured live 2026-05-31. See /docs/data-sources.md.
 import epaFixture from "./fixtures/epa-frs.json";
-import dohFixture from "./fixtures/doh-water.json";
 
 const ORIGIN = { lat: 47.3314667, lon: -122.50043043 };
 
@@ -44,25 +42,5 @@ describe("epaFrsAdapter.normalize (real fixture)", () => {
   it("aggregates program acronyms into the detail line", () => {
     const withPrograms = out.nearest.find((s) => s.detail && s.detail.length > 0);
     expect(withPrograms).toBeTruthy();
-  });
-});
-
-describe("dohWaterAdapter.normalize (real fixture, geometry-based)", () => {
-  const features = (dohFixture as {
-    features: { attributes: Record<string, unknown>; geometry?: { x: number; y: number } }[];
-  }).features;
-  const raw: RawDoh = {
-    origin: ORIGIN,
-    rows: features.map((f) => ({
-      attrs: f.attributes as unknown as RawDoh["rows"][number]["attrs"],
-      lat: f.geometry?.y ?? null,
-      lon: f.geometry?.x ?? null,
-    })),
-  };
-  it("derives distance from geometry and labels group + status", () => {
-    const out = dohWaterAdapter.normalize(raw);
-    expect(out.count).toBeGreaterThan(0);
-    expect(out.nearest[0].distanceKm).not.toBeNull();
-    expect(out.nearest.some((s) => /Group [AB]/.test(s.detail ?? ""))).toBe(true);
   });
 });

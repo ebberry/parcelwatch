@@ -6,7 +6,6 @@ import {
   Landmark,
   Ruler,
   Factory,
-  Droplets,
   Scale as ScaleIcon,
   ArrowRight,
   ExternalLink,
@@ -17,7 +16,7 @@ import { getZoningAnalysis } from "@/lib/zoning/service";
 import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
 import {
   getEpaSites,
-  getWaterSystems,
+  getWaterSystem,
   getNeighborhoodStats,
   censusKeyConfigured,
 } from "@/lib/environment/service";
@@ -30,6 +29,7 @@ import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
 import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
 import { NearbySitesPanel, NeighborhoodPanel } from "@/components/EnvironmentPanels";
+import { WaterPanel } from "@/components/WaterPanel";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { BrandMark } from "@/components/BrandMark";
@@ -74,7 +74,7 @@ export default async function ParcelPage({
       getFloodHazard(lat, lon),
       getSeismicActivity(lat, lon),
       getEpaSites(lat, lon),
-      getWaterSystems(lat, lon),
+      getWaterSystem(lat, lon),
       getNeighborhoodStats(lat, lon),
       getCouncilActivity(),
     ]);
@@ -189,11 +189,14 @@ export default async function ParcelPage({
               noneMessage="No EPA-regulated facilities within 3 km."
             />
 
-            <NearbySitesPanel
-              title="Drinking water systems"
-              icon={Droplets}
-              sourced={water}
-              noneMessage="No public water systems within 3 km — this area may rely on private wells."
+            <WaterPanel
+              parcelId={p.pin}
+              lookup={water.value}
+              provenance={{
+                source: water.source,
+                fetchedAt: water.fetchedAt,
+                confidence: water.confidence,
+              }}
             />
 
             <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
