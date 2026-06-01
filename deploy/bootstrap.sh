@@ -55,22 +55,28 @@ if [ "$need_install" = 1 ]; then
   sudo usermod -aG docker "$USER" 2>/dev/null || true
 fi
 
-# Compose v2 builds images via the Buildx plugin; some distro docker packages
-# (notably Amazon Linux) omit it. Ensure a recent one is present. Runs even on a
-# re-run, when the package install above is skipped. Works on any Linux.
-if ! docker buildx version >/dev/null 2>&1; then
-  say "Installing the Docker Buildx plugin..."
+# Compose v2 builds via the Buildx plugin, and needs >= 0.17. Some docker
+# packages (notably Amazon Linux) ship an OLDER buildx or none — both break the
+# build. Install a current one into a HIGH-PRECEDENCE cli-plugins dir so it
+# overrides any stale system copy. Runs even on a re-run.
+bx_ok=0
+if cur="$(docker buildx version 2>/dev/null | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)"; then
+  [ -n "$cur" ] && [ "$(printf '%s\nv0.17.0\n' "$cur" | sort -V | head -1)" = "v0.17.0" ] && bx_ok=1
+fi
+if [ "$bx_ok" = 0 ]; then
+  say "Installing a current Docker Buildx plugin (the system one is missing/too old)..."
   case "$(uname -m)" in
     x86_64) BX_ARCH=amd64 ;;
     aarch64) BX_ARCH=arm64 ;;
     *) BX_ARCH=amd64 ;;
   esac
   BX_VER="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/docker/buildx/releases/latest | sed 's#.*/tag/##')"
-  [ -n "$BX_VER" ] || BX_VER="v0.17.1"
-  sudo mkdir -p /usr/libexec/docker/cli-plugins
+  [ -n "$BX_VER" ] || BX_VER="v0.18.0"
+  sudo mkdir -p /usr/local/lib/docker/cli-plugins
   sudo curl -fsSL "https://github.com/docker/buildx/releases/download/${BX_VER}/buildx-${BX_VER}.linux-${BX_ARCH}" \
-    -o /usr/libexec/docker/cli-plugins/docker-buildx
-  sudo chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
+    -o /usr/local/lib/docker/cli-plugins/docker-buildx
+  sudo chmod +x /usr/local/lib/docker/cli-plugins/docker-buildx
+  docker buildx version 2>/dev/null | head -1 || true
 fi
 
 # Use sudo for docker so it works before the group membership takes effect.
