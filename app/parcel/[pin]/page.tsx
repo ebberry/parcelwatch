@@ -4,12 +4,24 @@ import { getParcelCore } from "@/lib/parcels/service";
 import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
 import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
+import {
+  getEpaSites,
+  getWaterSystems,
+  getWeatherAlerts,
+  getNeighborhoodStats,
+  censusKeyConfigured,
+} from "@/lib/environment/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { ReportPanel, Field } from "@/components/ReportPanel";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
 import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
+import {
+  NearbySitesPanel,
+  WeatherAlertsPanel,
+  NeighborhoodPanel,
+} from "@/components/EnvironmentPanels";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 
 export async function generateMetadata({
@@ -54,11 +66,19 @@ export default async function ParcelPage({
   const propertyType = decodePropertyType(p?.propertyType ?? null);
   const taxCalendar = getTaxCalendar();
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
-  // Hazard sources are independent — fetch them concurrently.
-  const [flood, seismic] = await Promise.all([
-    getFloodHazard(p?.lat ?? null, p?.lon ?? null),
-    getSeismicActivity(p?.lat ?? null, p?.lon ?? null),
-  ]);
+  // Environment + area sources are independent — fetch them concurrently.
+  const lat = p?.lat ?? null;
+  const lon = p?.lon ?? null;
+  const [flood, seismic, epa, water, weather, neighborhood] =
+    await Promise.all([
+      getFloodHazard(lat, lon),
+      getSeismicActivity(lat, lon),
+      getEpaSites(lat, lon),
+      getWaterSystems(lat, lon),
+      getWeatherAlerts(lat, lon),
+      getNeighborhoodStats(lat, lon),
+    ]);
+  const needsCensusKey = !censusKeyConfigured();
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-10">
@@ -159,6 +179,22 @@ export default async function ParcelPage({
             <FloodPanel sourced={flood} />
 
             <SeismicPanel sourced={seismic} />
+
+            <NearbySitesPanel
+              title="EPA-regulated sites nearby"
+              sourced={epa}
+              noneMessage="No EPA-regulated facilities within 3 km."
+            />
+
+            <NearbySitesPanel
+              title="Drinking water systems"
+              sourced={water}
+              noneMessage="No public water systems within 3 km — this area may rely on private wells."
+            />
+
+            <WeatherAlertsPanel sourced={weather} />
+
+            <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
 
             <TaxDeadlines sourced={taxCalendar} />
 

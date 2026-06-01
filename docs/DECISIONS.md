@@ -4,6 +4,46 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Slices 3b + 4: EPA, WA DOH, NWS, Census (area & environment)
+
+### Generic ArcGIS point-query helper for multi-source fan-out
+**Why:** EPA / WA DOH (and others) are all keyless ArcGIS point/radius queries.
+`lib/adapters/arcgis.ts` (`queryArcgisNearby`) + a shared `NearbySites`
+normalizer (`lib/environment/nearby.ts`) let each source be a thin adapter that
+just maps fields → `{name, detail, lat/lon}`. One `<NearbySitesPanel>` renders
+any of them.
+
+### Dropped WA Ecology cleanup sites — its spatial filter is unreliable
+**Why:** Investigated and rejected (would have shipped misleading "nearby"
+data). The TCP CleanupSites layer: (a) returns sites well OUTSIDE the buffer (a
+1 km query returned Tacoma sites ~4 km away); (b) its `Latitude`/`Longitude`
+fields are the responsible-party/smelter location, not the contamination
+footprint (e.g. "WestRock Tacoma" at 9.4 km surfaced for a Vashon point because
+the Tacoma Smelter Plume geometry blankets the island); (c) returnGeometry
+reprojects to State Plane (wkid 2927) and to WGS84 drops most rows. No
+trustworthy distance is derivable without proj4 + footprint logic. Deferred and
+documented rather than shipped wrong. (The plume genuinely affects Vashon — a
+proper treatment is future work.)
+
+### Per-source coordinate handling (verified each)
+**Why:** EPA uses `LATITUDE83`/`LONGITUDE83` fields (sane distances, 0.1–1.3 km
+on Vashon). WA DOH has NO lat/lon fields, so we read geometry with outSR=4326
+(sane, 0.1–3.0 km). returnGeometry is avoided where a layer has coordinate
+fields (it misbehaves on some AGOL services).
+
+### NWS needs a User-Agent header
+**Why:** `api.weather.gov` rejects requests without a descriptive User-Agent.
+Alerts are keyless GeoJSON; zero alerts → a reassuring green quiet state.
+
+### Census ACS is gated behind a free API key
+**Why:** Keyless ACS access was retired (returns `missing_key.html`). The
+geocoder (coords→tract) is still keyless and verified. The ACS data adapter is
+built to the documented `[[headers],[values]]` format but gated behind
+`CENSUS_API_KEY`; with no key the panel shows an honest "add a key" state. ACS
+parsing is UNVERIFIED-live until a key is added (flagged in data-sources.md).
+
+---
+
 ## 2026-05-31 — Assisted assessed-value appeals (user request)
 
 ### Assisted prep + hand-off, never auto-submit

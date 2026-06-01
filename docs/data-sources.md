@@ -154,8 +154,36 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - **BOE petition forms (mail filing):** `https://kingcounty.gov/en/independents/governance-and-leadership/government-oversight/board-appeals-equalization/appeals-forms` (200 OK).
 - Deadline rule (computed): 60 days from value notice or July 1, whichever later.
 
+## Slices 3b + 4 — environment & area context (verified 2026-05-31)
+
+### EPA Facility Registry Service (regulated sites) — ✅ shipped
+- `https://geodata.epa.gov/arcgis/rest/services/OEI/FRS_INTERESTS/MapServer/8/query`
+  (layer 8 = all-programs `FACILITY_INTERESTS`). Point+distance buffer.
+- Fields: `REGISTRY_ID`, `PRIMARY_NAME`, `PGM_SYS_ACRNM`, `LATITUDE83`, `LONGITUDE83`.
+  De-dupe by `REGISTRY_ID` (one row per program). Distances sane (0.1–1.3 km on Vashon).
+
+### WA DOH drinking-water systems — ✅ shipped
+- `https://services8.arcgis.com/rGGrs6HCnw87OFOT/arcgis/rest/services/Drinking_Water_Systems/FeatureServer/0/query`
+- Fields: `WS_Name`, `WS_Grp` (A/B), `WS_Status`. No lat/lon fields → read geometry (outSR=4326).
+
+### NWS active weather alerts — ✅ shipped
+- `https://api.weather.gov/alerts/active?point=<lat>,<lon>` — **requires a User-Agent header**.
+- GeoJSON; `properties.event/severity/headline/areaDesc/expires`.
+
+### U.S. Census — ⚠️ geocoder shipped, ACS gated on key
+- Geocoder (KEYLESS, verified): `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?...` → tract (e.g. 53033027702).
+- ACS 5-year data **requires a free `CENSUS_API_KEY`** (keyless retired → `missing_key.html`).
+  Built to the `[[headers],[values]]` format; **UNVERIFIED-live until a key is added**.
+
+### ⛔ WA Ecology TCP CleanupSites — DEFERRED (unreliable spatial filter)
+- `services.arcgis.com/6lCKYNJLvwTXqrmp/.../TCP/FeatureServer/0` returns sites far
+  outside the buffer; `Latitude`/`Longitude` = responsible-party location, not the
+  contamination footprint; geometry is State Plane (wkid 2927) and reprojection
+  to 4326 drops rows. Needs footprint/proj handling before it's trustworthy.
+
 ## To verify before later slices
 
+- [ ] WA Ecology cleanup sites — proper footprint + projection handling (Tacoma Smelter Plume affects Vashon).
 - [ ] King County real-property **sales** source (bulk EXTR_RPSale) for sale-based comps.
 - [ ] EPA FRS geospatial endpoint + WA Ecology/DOH (Slice 3b).
 - [ ] Urban R-zone dimensional standards (when extending the zoning engine).
