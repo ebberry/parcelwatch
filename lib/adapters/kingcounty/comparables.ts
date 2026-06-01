@@ -55,6 +55,71 @@ function toRawComparable(
   };
 }
 
+export interface ParcelValuation {
+  assessedTotal: number | null;
+  lotSqFt: number | null;
+  address: string | null;
+}
+
+/**
+ * Batch-fetch current assessed values (+ lot size) for a list of PINs, so each
+ * comparable SALE can be shown alongside the county's assessment of that same
+ * home (the assessment-to-sale "ratio study" the Board uses). Same gisdata →
+ * gismaps failover. Returns a PIN→valuation map; missing PINs are simply absent.
+ */
+export async function getValuationsByPins(
+  pins: string[],
+): Promise<Map<string, ParcelValuation>> {
+  const unique = [...new Set(pins.filter(Boolean))].slice(0, 100);
+  const out = new Map<string, ParcelValuation>();
+  if (!unique.length) return out;
+  const inList = unique.map((p) => `'${escapeArcgisLiteral(p)}'`).join(",");
+
+  const collect = (
+    rows: { attributes: Partial<CompAttributes> & { PRIMARY_ADDR?: number | null } }[],
+  ) => {
+    for (const f of rows) {
+      const r = toRawComparable(f.attributes, undefined);
+      if (!r.pin) continue;
+      const existing = out.get(r.pin);
+      // Take the first row for a PIN; replace only to fill in a missing
+      // assessment or to prefer the primary-address row.
+      const better =
+        !existing ||
+        (existing.assessedTotal == null && r.assessedTotal != null) ||
+        f.attributes.PRIMARY_ADDR === 1;
+      if (better) {
+        out.set(r.pin, {
+          assessedTotal: r.assessedTotal,
+          lotSqFt: r.lotSqFt,
+          address: r.address,
+        });
+      }
+    }
+  };
+
+  try {
+    const res = await queryLayer<CompAttributes & { PRIMARY_ADDR: number | null }>({
+      queryUrl: PARCEL_ADDRESS_QUERY,
+      where: `PIN IN (${inList})`,
+      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR,PRIMARY_ADDR",
+      returnGeometry: false,
+      resultRecordCount: 200,
+    });
+    collect(res.features ?? []);
+  } catch {
+    const res = await queryLayer<Partial<CompAttributes>>({
+      queryUrl: GISMAPS_PARCEL_QUERY,
+      where: `PIN IN (${inList})`,
+      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR",
+      returnGeometry: false,
+      resultRecordCount: 200,
+    });
+    collect(res.features ?? []);
+  }
+  return out;
+}
+
 export async function searchComparables(opts: {
   lat: number;
   lon: number;

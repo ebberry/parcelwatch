@@ -7,6 +7,7 @@ import {
 } from "@/lib/appeals";
 import type { ParcelCore } from "@/lib/adapters/kingcounty/parcel";
 import type { RawSale } from "@/lib/adapters/kingcounty/sales";
+import type { ParcelValuation } from "@/lib/adapters/kingcounty/comparables";
 
 function subject(overrides: Partial<ParcelCore> = {}): ParcelCore {
   return {
@@ -58,6 +59,16 @@ const sale = (
   ...over,
 });
 
+const vals = (
+  entries: [string, number | null][],
+): Map<string, ParcelValuation> =>
+  new Map(
+    entries.map(([pin, assessedTotal]) => [
+      pin,
+      { assessedTotal, lotSqFt: null, address: null },
+    ]),
+  );
+
 describe("buildSaleCompSet", () => {
   it("flags appearsHigh when assessed exceeds the comparable-sale median", () => {
     const set = buildSaleCompSet(subject(), [
@@ -71,6 +82,34 @@ describe("buildSaleCompSet", () => {
     expect(set.appearsHigh).toBe(true);
     expect(set.earliestSale).toBe("2024-11-02");
     expect(set.latestSale).toBe("2025-08-13");
+  });
+
+  it("joins each comp's assessed value and computes the assessment-to-sale ratio", () => {
+    const set = buildSaleCompSet(
+      subject(),
+      [
+        sale("a", 700000, "2025-08-13"),
+        sale("b", 800000, "2025-06-10"),
+        sale("c", 600000, "2024-11-02"),
+      ],
+      [],
+      vals([
+        ["a", 630000], // 90% of sale
+        ["b", 640000], // 80% of sale
+        ["c", 600000], // 100% of sale
+      ]),
+    );
+    expect(set.comps.map((c) => c.assessedTotal)).toEqual([630000, 640000, 600000]);
+    expect(set.comps.map((c) => c.assessedToSalePct)).toEqual([90, 80, 100]);
+    expect(set.medianAssessedTotal).toBe(630000);
+    expect(set.medianAssessedToSalePct).toBe(90);
+  });
+
+  it("leaves assessed columns null when no valuations are supplied", () => {
+    const set = buildSaleCompSet(subject(), [sale("a", 700000, "2025-08-13")]);
+    expect(set.comps[0].assessedTotal).toBeNull();
+    expect(set.comps[0].assessedToSalePct).toBeNull();
+    expect(set.medianAssessedTotal).toBeNull();
   });
 
   it("does not flag a subject in line with comparable sales", () => {

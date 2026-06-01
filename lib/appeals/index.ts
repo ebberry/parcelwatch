@@ -89,11 +89,16 @@ export function buildMarketValueNarrative(sale: SaleCompSet): string | null {
     sale.lowSalePrice != null && sale.highSalePrice != null
       ? ` (ranging from ${usd(sale.lowSalePrice)} to ${usd(sale.highSalePrice)})`
       : "";
+  const ratio =
+    sale.medianAssessedToSalePct != null
+      ? `For comparison, those nearby homes are assessed at a median of about ${sale.medianAssessedToSalePct}% of their actual sale price. `
+      : "";
   return (
     `${sale.comps.length} comparable properties within about a mile sold ${window} for a median of ${usd(sale.medianSalePrice)}${range}. ` +
     `The assessed value of ${usd(sale.subjectAssessedTotal)} is about ${sale.assessedVsMedianSalePct}% above that median, indicating the assessment likely exceeds the property's true and fair market value (RCW 84.40.0301). ` +
+    ratio +
     `Recent arm's-length sales of similar nearby property are the best evidence of market value and support a reduction in the assessed value. ` +
-    `(These recorded sales are not adjusted for building size or condition; see the attached comparable-sales schedule.)`
+    `(These recorded sales are not adjusted for building size or condition; see the attached comparable-homes schedule.)`
   );
 }
 

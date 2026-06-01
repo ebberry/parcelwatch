@@ -3,6 +3,10 @@ import {
   getSalesByPin,
   type RawSale,
 } from "@/lib/adapters/kingcounty/sales";
+import {
+  getValuationsByPins,
+  type ParcelValuation,
+} from "@/lib/adapters/kingcounty/comparables";
 import type { ParcelCore } from "@/lib/adapters/kingcounty/parcel";
 import { haversineKm } from "@/lib/geo";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
@@ -26,6 +30,10 @@ export interface SaleComp {
   propertyType: string | null;
   improved: boolean;
   distanceKm: number | null;
+  /** The county's current assessed value for this same home (joined by PIN). */
+  assessedTotal: number | null;
+  /** Assessed ÷ sale price, as a percentage (<100 = assessed below its sale). */
+  assessedToSalePct: number | null;
 }
 
 /** The subject parcel's own most recent qualifying sale, if any. */
@@ -45,6 +53,10 @@ export interface SaleCompSet {
   medianSalePrice: number | null;
   lowSalePrice: number | null;
   highSalePrice: number | null;
+  /** Median assessed value across the comparable homes (those we could value). */
+  medianAssessedTotal: number | null;
+  /** Median assessed-to-sale ratio across comps, as % (the county "ratio study"). */
+  medianAssessedToSalePct: number | null;
   subjectAssessedTotal: number | null;
   /** Subject assessed vs comparable median sale, as % (+ = assessed above market). */
   assessedVsMedianSalePct: number | null;
@@ -104,6 +116,7 @@ export function buildSaleCompSet(
   subject: ParcelCore,
   rawNearby: RawSale[],
   rawSubjectSales: RawSale[] = [],
+  valuationByPin: Map<string, ParcelValuation> = new Map(),
 ): SaleCompSet {
   const { keepUses, improved } = subjectProfile(subject);
   const assessed = subject.assessment?.appraisedTotal ?? null;
@@ -121,23 +134,37 @@ export function buildSaleCompSet(
   }
 
   const comps: SaleComp[] = pool
-    .map((s) => ({
-      pin: s.pin,
-      address: s.address,
-      saleDate: s.saleDate,
-      salePrice: s.salePrice,
-      propertyType: s.propertyType,
-      improved: s.improved,
-      distanceKm:
-        subject.lat != null && subject.lon != null && s.lat != null && s.lon != null
-          ? Math.round(haversineKm(subject.lat, subject.lon, s.lat, s.lon) * 10) / 10
-          : null,
-    }))
+    .map((s) => {
+      const assessedTotal = valuationByPin.get(s.pin)?.assessedTotal ?? null;
+      return {
+        pin: s.pin,
+        address: s.address ?? valuationByPin.get(s.pin)?.address ?? null,
+        saleDate: s.saleDate,
+        salePrice: s.salePrice,
+        propertyType: s.propertyType,
+        improved: s.improved,
+        distanceKm:
+          subject.lat != null && subject.lon != null && s.lat != null && s.lon != null
+            ? Math.round(haversineKm(subject.lat, subject.lon, s.lat, s.lon) * 10) / 10
+            : null,
+        assessedTotal,
+        assessedToSalePct:
+          assessedTotal != null && s.salePrice && s.salePrice > 0
+            ? Math.round((assessedTotal / s.salePrice) * 100)
+            : null,
+      };
+    })
     .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9))
     .slice(0, TARGET_COMPS);
 
   const prices = comps.map((c) => c.salePrice!).filter((n) => n != null);
   const medianSale = median(prices);
+  const medianAssessed = median(
+    comps.map((c) => c.assessedTotal).filter((n): n is number => n != null),
+  );
+  const medianRatio = median(
+    comps.map((c) => c.assessedToSalePct).filter((n): n is number => n != null),
+  );
   const dates = comps.map((c) => c.saleDate!).filter(Boolean).sort();
 
   const vsPct =
@@ -168,6 +195,8 @@ export function buildSaleCompSet(
     medianSalePrice: medianSale,
     lowSalePrice: prices.length ? Math.min(...prices) : null,
     highSalePrice: prices.length ? Math.max(...prices) : null,
+    medianAssessedTotal: medianAssessed,
+    medianAssessedToSalePct: medianRatio,
     subjectAssessedTotal: assessed,
     assessedVsMedianSalePct: vsPct,
     appearsHigh: vsPct != null && vsPct >= MATERIAL_PCT,
@@ -179,7 +208,7 @@ export function buildSaleCompSet(
 export async function getSaleComps(
   subject: ParcelCore,
 ): Promise<SourcedValue<SaleCompSet>> {
-  const source = "King County recorded sales (last 3 years)";
+  const source = "King County recorded sales + assessor values (last 3 years)";
   if (subject.lat == null || subject.lon == null) {
     return unavailable(source);
   }
@@ -194,7 +223,11 @@ export async function getSaleComps(
       }),
       getSalesByPin(subject.pin).catch(() => [] as RawSale[]),
     ]);
-    const set = buildSaleCompSet(subject, nearby, own);
+    // Join the county's current assessment onto each comparable home (by PIN).
+    const valuations = await getValuationsByPins(nearby.map((s) => s.pin)).catch(
+      () => new Map<string, ParcelValuation>(),
+    );
+    const set = buildSaleCompSet(subject, nearby, own, valuations);
     if (!set.comps.length && !set.subjectSale) return unavailable(source);
     return {
       value: set,

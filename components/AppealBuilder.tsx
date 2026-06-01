@@ -88,7 +88,9 @@ export function AppealBuilder({
       {sale && (saleComps.length > 0 || sale.subjectSale) && (
         <section className="no-print rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-[15px] font-medium text-pw-ink">Comparable sales</h2>
+            <h2 className="text-[15px] font-medium text-pw-ink">
+              Comparable homes — recent sales &amp; assessments
+            </h2>
             <ProvenanceBadge {...saleProvenance} />
           </div>
 
@@ -145,8 +147,9 @@ export function AppealBuilder({
                     <tr className="border-b border-pw-border text-pw-faint">
                       <th className="py-1 font-medium">Sold</th>
                       <th className="py-1 font-medium">Address</th>
-                      <th className="py-1 text-right font-medium">Price</th>
-                      <th className="py-1 text-right font-medium">Distance</th>
+                      <th className="py-1 text-right font-medium">Sale price</th>
+                      <th className="py-1 text-right font-medium">Assessed</th>
+                      <th className="py-1 text-right font-medium">Dist.</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -155,16 +158,32 @@ export function AppealBuilder({
                         <td className="py-1.5 tabular-nums text-pw-sub">{fmtDate(c.saleDate)}</td>
                         <td className="py-1.5 text-pw-ink">{c.address ?? c.pin}</td>
                         <td className="py-1.5 text-right tabular-nums text-pw-ink">{usd(c.salePrice)}</td>
+                        <td className="py-1.5 text-right tabular-nums text-pw-sub">{usd(c.assessedTotal)}</td>
                         <td className="py-1.5 text-right tabular-nums text-pw-sub">{fmtMiles(c.distanceKm)}</td>
                       </tr>
                     ))}
+                    <tr className="font-medium">
+                      <td className="py-1.5 text-pw-sub" colSpan={2}>
+                        Median
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-pw-ink">{usd(sale.medianSalePrice)}</td>
+                      <td className="py-1.5 text-right tabular-nums text-pw-ink">{usd(sale.medianAssessedTotal)}</td>
+                      <td className="py-1.5" />
+                    </tr>
                   </tbody>
                 </table>
               </div>
               <p className="mt-2 text-xs text-pw-faint">
-                Recorded arm&apos;s-length sales of the same use within about a mile,
-                last 3 years. Not adjusted for building size or condition — a market
-                screen, not a formal appraisal.
+                Each home&apos;s recorded sale price next to the county&apos;s current
+                assessed value.
+                {sale.medianAssessedToSalePct != null && (
+                  <> Nearby homes are assessed at a median of about{" "}
+                  <span className="font-medium text-pw-sub">
+                    {sale.medianAssessedToSalePct}% of their sale price
+                  </span>.</>
+                )}{" "}
+                Arm&apos;s-length sales, same use, within ~1 mile, last 3 years; sale
+                and assessment dates may differ. A market screen, not a formal appraisal.
               </p>
             </>
           )}
@@ -175,7 +194,9 @@ export function AppealBuilder({
       {comp && (
         <section className="no-print mt-4 rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-[15px] font-medium text-pw-ink">Comparable assessments</h2>
+            <h2 className="text-[15px] font-medium text-pw-ink">
+              Assessment uniformity (per lot sq ft)
+            </h2>
             <ProvenanceBadge {...compProvenance} />
           </div>
           <p className="text-sm text-pw-sub">
@@ -350,7 +371,7 @@ export function AppealBuilder({
         {saleComps.length > 0 && (
           <>
             <h3 className="mt-4 font-semibold">
-              Comparable sales (within ~1 mile, same use, last 3 years)
+              Comparable homes — sales &amp; assessments (within ~1 mile, same use, last 3 years)
             </h3>
             <table className="mt-1 w-full text-left text-xs">
               <thead>
@@ -358,6 +379,8 @@ export function AppealBuilder({
                   <th className="py-1">Sale date</th>
                   <th className="py-1">Address</th>
                   <th className="py-1 text-right">Sale price</th>
+                  <th className="py-1 text-right">Assessed value</th>
+                  <th className="py-1 text-right">Assd/sale</th>
                   <th className="py-1 text-right">Distance</th>
                 </tr>
               </thead>
@@ -367,9 +390,22 @@ export function AppealBuilder({
                     <td className="py-1 tabular-nums">{fmtDate(c.saleDate)}</td>
                     <td className="py-1">{c.address ?? c.pin}</td>
                     <td className="py-1 text-right tabular-nums">{usd(c.salePrice)}</td>
+                    <td className="py-1 text-right tabular-nums">{usd(c.assessedTotal)}</td>
+                    <td className="py-1 text-right tabular-nums">
+                      {c.assessedToSalePct != null ? `${c.assessedToSalePct}%` : "—"}
+                    </td>
                     <td className="py-1 text-right tabular-nums">{fmtMiles(c.distanceKm)}</td>
                   </tr>
                 ))}
+                <tr className="font-semibold">
+                  <td className="py-1" colSpan={2}>Median</td>
+                  <td className="py-1 text-right tabular-nums">{usd(sale?.medianSalePrice)}</td>
+                  <td className="py-1 text-right tabular-nums">{usd(sale?.medianAssessedTotal)}</td>
+                  <td className="py-1 text-right tabular-nums">
+                    {sale?.medianAssessedToSalePct != null ? `${sale.medianAssessedToSalePct}%` : "—"}
+                  </td>
+                  <td className="py-1" />
+                </tr>
               </tbody>
             </table>
             <p className="mt-1 text-xs text-pw-faint">
@@ -377,11 +413,12 @@ export function AppealBuilder({
               {sale?.lowSalePrice != null && sale?.highSalePrice != null && (
                 <> (range {usd(sale.lowSalePrice)}–{usd(sale.highSalePrice)})</>
               )}
-              . Assessed value {usd(parcel.total)}
+              ; median assessed ≈ {usd(sale?.medianAssessedTotal)}. This property assessed{" "}
+              {usd(parcel.total)}
               {sale?.assessedVsMedianSalePct != null && (
                 <> ({sale.assessedVsMedianSalePct > 0 ? "+" : ""}{sale.assessedVsMedianSalePct}% vs median sale)</>
               )}
-              . Recorded sales, not size/condition-adjusted.
+              . Recorded sales, not size/condition-adjusted; sale and assessment dates may differ.
             </p>
           </>
         )}
