@@ -25,10 +25,18 @@ export const watches = pgTable("watches", {
   userId: text("user_id").notNull(),
   /** Null = jurisdiction-wide (not tied to one parcel). */
   parcelId: text("parcel_id"),
-  kind: text("kind").notNull(), // 'council' | 'legislature'
+  // 'council' | 'legislature' (jurisdiction-wide feed) | 'assessment' | 'sales'
+  // (parcel-scoped state diff).
+  kind: text("kind").notNull(),
   topics: jsonb("topics").$type<string[]>().notNull().default([]),
   digestFrequency: text("digest_frequency").notNull().default("weekly"),
   active: boolean("active").notNull().default(true),
+  /**
+   * Per-watch baseline for parcel-scoped kinds: the last-observed state we diff
+   * against (e.g. last assessed value, or the set of sale keys already seen).
+   * Null until the first poll seeds it. Unused by jurisdiction-wide kinds.
+   */
+  snapshot: jsonb("snapshot").$type<Record<string, unknown>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

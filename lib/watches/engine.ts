@@ -3,14 +3,15 @@ import { getDb } from "@/db";
 import { watches, watchSeen, alerts } from "@/db/schema";
 import { fetchCouncilItems } from "./sources/council";
 import { fetchNewBills, normalizeLegislature, sinceDate } from "./sources/legislature";
-import type { WatchItem, WatchKind } from "./index";
+import { JURISDICTION_KINDS, type WatchItem, type JurisdictionWatchKind } from "./index";
+import { runParcelWatches, type ParcelPollResult } from "./parcel";
 
-export const SOURCE_LABEL: Record<WatchKind, string> = {
+export const SOURCE_LABEL: Record<JurisdictionWatchKind, string> = {
   council: "King County Council (Legistar)",
   legislature: "WA Legislature web services",
 };
 
-async function fetchItems(kind: WatchKind): Promise<WatchItem[]> {
+async function fetchItems(kind: JurisdictionWatchKind): Promise<WatchItem[]> {
   switch (kind) {
     case "council":
       return fetchCouncilItems();
@@ -22,7 +23,7 @@ async function fetchItems(kind: WatchKind): Promise<WatchItem[]> {
 }
 
 export interface PollResult {
-  kind: WatchKind;
+  kind: JurisdictionWatchKind;
   fetched: number;
   seededBaseline: boolean;
   newItems: number;
@@ -34,7 +35,7 @@ export interface PollResult {
  * subscriptions. The FIRST poll for a kind seeds the baseline silently (records
  * everything as seen, no alerts) so we only ever alert on genuinely new items.
  */
-export async function runWatchPoll(kind: WatchKind): Promise<PollResult> {
+export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollResult> {
   const db = getDb();
   const items = await fetchItems(kind);
 
@@ -91,10 +92,17 @@ export async function runWatchPoll(kind: WatchKind): Promise<PollResult> {
   return { kind, fetched: items.length, seededBaseline: false, newItems, alertsCreated };
 }
 
-/** Run all watch kinds. */
-export async function runAllWatches(): Promise<PollResult[]> {
-  const kinds: WatchKind[] = ["council", "legislature"];
-  const results: PollResult[] = [];
-  for (const kind of kinds) results.push(await runWatchPoll(kind));
-  return results;
+export interface AllWatchResults {
+  jurisdiction: PollResult[];
+  parcel: ParcelPollResult;
+}
+
+/** Run every watch — jurisdiction feeds then parcel state-diffs. */
+export async function runAllWatches(): Promise<AllWatchResults> {
+  const jurisdiction: PollResult[] = [];
+  for (const kind of JURISDICTION_KINDS) {
+    jurisdiction.push(await runWatchPoll(kind));
+  }
+  const parcel = await runParcelWatches();
+  return { jurisdiction, parcel };
 }

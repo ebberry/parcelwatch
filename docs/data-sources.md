@@ -262,8 +262,28 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - ⛔ **King County permits** — NO API. Only the Accela Citizen Access portal (interactive) or records request. Deferred.
 - ⛔ **King County recorder (title/lien watch)** — NO API. Landmark Web portal; ToS forbids automated access. Deferred (needs a vendor feed / records arrangement).
 
+### ⭐ Parcel change-watches (2026-06-01) — the recurring-value core
+
+A second watch shape alongside the jurisdiction feeds: **per-parcel state diffs**.
+For a watched parcel we fetch current state, compare to a per-watch `snapshot`
+(jsonb on `watches`), and alert the owner on a real delta. First poll seeds the
+baseline silently. Engine: `lib/watches/parcel.ts` (pure diffs are unit-tested);
+runs inside `runAllWatches()` → BullMQ worker.
+
+- ✅ **`assessment`** — diff `appraisedTotal` from the parcel adapter (reuses the
+  gisdata→gismaps failover). Alert: "Assessed value rose: $680k → $760k (+11.8%)
+  … you may be able to appeal." Verified live end-to-end against parcel 0221029065.
+- ✅ **`sales`** — diff the set of recorded sale keys (`pin:date:price`) within ~1
+  mi (gismaps sales layer 3) against the seen-set; alert per new comparable.
+  Verified live (2 new sales surfaced). NOTE: the live layer's coarse arms-length
+  filter lets some non-market transfers through (e.g. a $100k partial-interest
+  sale) — the bulk `EXTR_RPSale` follow-up (see `docs/specs/living-area-comps.md`)
+  adds `SaleReason`/`SaleWarning` filtering.
+- ⛔ **permits** — still no API (deferred, above); the engine is extensible for it.
+- Privacy: built-environment facts only (assessed values, sales) — never owner names.
+
 Infra: native Homebrew **Postgres 16** + **Redis** (background services); watch state in
-Postgres (`watches`, `watch_seen`, `alerts`); **BullMQ** scheduler (`npm run worker`).
+Postgres (`watches` incl. `snapshot`, `watch_seen`, `alerts`); **BullMQ** scheduler (`npm run worker`).
 
 ## To verify before later slices
 

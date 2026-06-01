@@ -67,6 +67,28 @@ export async function markAllAlertsRead(userId: string): Promise<void> {
 }
 
 /**
+ * Which watch kinds are active for this user on this parcel — drives the
+ * "Watch this property" toggles on the report. Council/legislature are
+ * jurisdiction-wide (any parcel scope counts); parcel kinds must match the PIN.
+ */
+export async function getActiveWatchKinds(
+  userId: string,
+  parcelId: string,
+): Promise<Set<string>> {
+  const db = getDb();
+  const rows = await db
+    .select({ kind: watches.kind, parcelId: watches.parcelId })
+    .from(watches)
+    .where(and(eq(watches.userId, userId), eq(watches.active, true)));
+  const active = new Set<string>();
+  for (const r of rows) {
+    if (r.kind === "council" || r.kind === "legislature") active.add(r.kind);
+    else if (r.parcelId === parcelId) active.add(r.kind);
+  }
+  return active;
+}
+
+/**
  * Ensure a user has a default council watch (all topics), so polls generate
  * alerts for them. Idempotent.
  */
