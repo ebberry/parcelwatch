@@ -50,6 +50,14 @@ describe("summarizeFindings", () => {
     expect(out.find((f) => f.id === "appeal")).toBeUndefined();
   });
 
+  it("folds the appeal deadline into the lead finding when it's near", () => {
+    const taxWithAppeal = {
+      appeal: { label: "appeal", date: "2026-07-01", dateLabel: "July 1, 2026", daysAway: 30, passed: false, citation: "" },
+    } as TaxCalendar;
+    const out = summarizeFindings({ ...NONE, recommendation: rec(), tax: taxWithAppeal });
+    expect(out[0].title).toMatch(/file by July 1, 2026/);
+  });
+
   it("orders money > flood > tax and caps at four findings", () => {
     const out = summarizeFindings({
       recommendation: rec(),

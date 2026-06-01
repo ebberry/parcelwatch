@@ -42,13 +42,19 @@ export function summarizeFindings(input: {
   // 1. The money opportunity — our highest-value, most actionable signal.
   const rec = input.recommendation;
   if (rec?.shouldAppeal && rec.reductionAmount != null && rec.reductionPct != null) {
+    // When the Board-of-Equalization deadline is near, fold the urgency in.
+    const appealBy = input.tax?.appeal;
+    const deadline =
+      appealBy && appealBy.daysAway >= 0 && appealBy.daysAway <= 60
+        ? ` — file by ${appealBy.dateLabel}`
+        : "";
     ranked.push({
       priority: 0,
       finding: {
         id: "appeal",
         tone: "opportunity",
         href: "#appeal",
-        title: `You may be over-assessed — an appeal could lower it about ${usd(rec.reductionAmount)} (${rec.reductionPct}%)`,
+        title: `You may be over-assessed — an appeal could lower it about ${usd(rec.reductionAmount)} (${rec.reductionPct}%)${deadline}`,
       },
     });
   }
