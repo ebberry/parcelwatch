@@ -54,6 +54,25 @@ if [ "$need_install" = 1 ]; then
   fi
   sudo usermod -aG docker "$USER" 2>/dev/null || true
 fi
+
+# Compose v2 builds images via the Buildx plugin; some distro docker packages
+# (notably Amazon Linux) omit it. Ensure a recent one is present. Runs even on a
+# re-run, when the package install above is skipped. Works on any Linux.
+if ! docker buildx version >/dev/null 2>&1; then
+  say "Installing the Docker Buildx plugin..."
+  case "$(uname -m)" in
+    x86_64) BX_ARCH=amd64 ;;
+    aarch64) BX_ARCH=arm64 ;;
+    *) BX_ARCH=amd64 ;;
+  esac
+  BX_VER="$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/docker/buildx/releases/latest | sed 's#.*/tag/##')"
+  [ -n "$BX_VER" ] || BX_VER="v0.17.1"
+  sudo mkdir -p /usr/libexec/docker/cli-plugins
+  sudo curl -fsSL "https://github.com/docker/buildx/releases/download/${BX_VER}/buildx-${BX_VER}.linux-${BX_ARCH}" \
+    -o /usr/libexec/docker/cli-plugins/docker-buildx
+  sudo chmod +x /usr/libexec/docker/cli-plugins/docker-buildx
+fi
+
 # Use sudo for docker so it works before the group membership takes effect.
 COMPOSE="sudo $COMPOSE"
 
