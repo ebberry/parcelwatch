@@ -1,6 +1,7 @@
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { Users } from "lucide-react";
-import { Panel, Field, QuietNote, MetricTile } from "@/components/Panel";
+import { Panel, Field, QuietNote, MetricTile, PanelInsight } from "@/components/Panel";
 import { GLOSSARY } from "@/lib/glossary";
 import { titleCaseName } from "@/lib/format";
 import type { SourcedValue } from "@/lib/provenance";
@@ -12,11 +13,14 @@ export function NearbySitesPanel({
   icon,
   sourced,
   noneMessage,
+  insight,
 }: {
   title: string;
   icon?: LucideIcon;
   sourced: SourcedValue<NearbySites>;
   noneMessage: string;
+  /** Plain-language interpretation shown when there are nearby sites. */
+  insight?: ReactNode;
 }) {
   const s = sourced.value;
   return (
@@ -52,6 +56,7 @@ export function NearbySitesPanel({
               </li>
             ))}
           </ul>
+          {insight && <PanelInsight>{insight}</PanelInsight>}
         </>
       )}
     </Panel>
@@ -100,6 +105,10 @@ export function NeighborhoodPanel({
               value={n.ownerOccupiedPct != null ? `${n.ownerOccupiedPct}%` : null}
             />
           </dl>
+          <PanelInsight>
+            A snapshot of the surrounding census tract for context — it describes the
+            wider area, not your specific property.
+          </PanelInsight>
         </>
       )}
     </Panel>

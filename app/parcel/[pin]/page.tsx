@@ -26,7 +26,7 @@ import { getCouncilActivity } from "@/lib/watches/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { titleCaseAddress } from "@/lib/format";
-import { Panel, Field, MetricTile } from "@/components/Panel";
+import { Panel, Field, MetricTile, PanelInsight } from "@/components/Panel";
 import { summarizeFindings } from "@/lib/report/summary";
 import { ReportSummary } from "@/components/ReportSummary";
 import { watchThisArea } from "./actions";
@@ -179,6 +179,11 @@ export default async function ParcelPage({
                     tip={GLOSSARY.levy}
                   />
                 </dl>
+                <PanelInsight>
+                  This is the county&apos;s value used to calculate your property tax —
+                  not a market appraisal. If it looks high next to comparable homes, the
+                  appeal below can help lower your bill.
+                </PanelInsight>
               </Panel>
 
               {recommendation && (
@@ -234,6 +239,7 @@ export default async function ParcelPage({
                   icon={Factory}
                   sourced={epa}
                   noneMessage="No EPA-regulated facilities within 2 miles."
+                  insight="Most EPA-listed sites are routine registrations — fuel tanks, dry cleaners, small facilities — not active contamination. Distance matters: a site next door is worth a closer look; one a mile or two away usually isn't."
                 />
               </div>
 

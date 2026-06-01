@@ -139,6 +139,20 @@ export function Field({
 }
 
 /**
+ * A plain-language "what this means for you" line — turns the panel's facts into
+ * understanding (the "explained" half of the tagline). Quiet, recessed, on the
+ * warm inset surface so it reads as guidance, not another data row.
+ */
+export function PanelInsight({ children }: { children: ReactNode }) {
+  return (
+    <p className="mt-3 rounded-lg bg-pw-inset px-3 py-2.5 text-sm text-pw-sub">
+      <span className="font-medium text-pw-ink">What this means · </span>
+      {children}
+    </p>
+  );
+}
+
+/**
  * A reassuring "all clear" line for quiet states — designed to feel like a clean
  * bill of health, never like the app failed to load.
  */

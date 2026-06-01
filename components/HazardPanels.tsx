@@ -1,5 +1,5 @@
 import { Waves, Activity } from "lucide-react";
-import { Panel, Field, StatusPill, QuietNote } from "@/components/Panel";
+import { Panel, Field, StatusPill, QuietNote, PanelInsight } from "@/components/Panel";
 import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import type { FloodHazard, SeismicActivity, Earthquake } from "@/lib/hazards/service";
@@ -119,6 +119,11 @@ export function SeismicPanel({ sourced }: { sourced: SourcedValue<SeismicActivit
               <QuakeRow key={q.url ?? i} q={q} />
             ))}
           </ul>
+          <PanelInsight>
+            {s.largest?.magnitude != null && s.largest.magnitude >= 4
+              ? "A magnitude 4+ quake is noticeable but rarely damaging. The Puget Sound region is seismically active, so quake-resilient construction and securing heavy items are sensible precautions."
+              : "Small quakes like these are routine background activity across the Puget Sound region and rarely cause damage — not a sign of unusual risk at this address."}
+          </PanelInsight>
         </>
       )}
     </Panel>
