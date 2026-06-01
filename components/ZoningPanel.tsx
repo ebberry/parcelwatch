@@ -1,13 +1,8 @@
-import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
+import { Scale } from "lucide-react";
+import { Panel, StatusPill, type PillTone } from "@/components/Panel";
 import { InfoTip } from "@/components/InfoTip";
 import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
-
-function standardTip(label: string): string | null {
-  if (/setback/i.test(label)) return GLOSSARY.setback;
-  if (/lot area/i.test(label)) return GLOSSARY.minLotArea;
-  return null;
-}
 import {
   ZONING_DISCLAIMER,
   type ZoningAnalysis,
@@ -15,85 +10,67 @@ import {
   type ZoningVerdict,
 } from "@/lib/zoning/service";
 
-const VERDICT_STYLE: Record<ZoningVerdict, { dot: string; text: string; label: string }> = {
-  "likely yes": { dot: "bg-confidence-confirmed", text: "text-confidence-confirmed", label: "Likely yes" },
-  conditional: { dot: "bg-confidence-stale", text: "text-confidence-stale", label: "Conditional" },
-  "check with county": { dot: "bg-confidence-unavailable", text: "text-gray-500", label: "Check with county" },
-  no: { dot: "bg-red-600", text: "text-red-700", label: "No" },
+const VERDICT: Record<ZoningVerdict, { tone: PillTone; label: string }> = {
+  "likely yes": { tone: "good", label: "likely yes" },
+  conditional: { tone: "watch", label: "conditional" },
+  "check with county": { tone: "neutral", label: "check with county" },
+  no: { tone: "alert", label: "no" },
 };
 
-function VerdictPill({ verdict }: { verdict: ZoningVerdict }) {
-  const s = VERDICT_STYLE[verdict];
-  return (
-    <span className={`inline-flex shrink-0 items-center gap-1.5 text-sm font-medium ${s.text}`}>
-      <span className={`h-2 w-2 rounded-full ${s.dot}`} aria-hidden="true" />
-      {s.label}
-    </span>
-  );
+function standardTip(label: string): string | null {
+  if (/setback/i.test(label)) return GLOSSARY.setback;
+  if (/lot area/i.test(label)) return GLOSSARY.minLotArea;
+  return null;
 }
 
 function AnswerRow({ answer }: { answer: ZoningAnswer }) {
+  const v = VERDICT[answer.verdict];
   return (
     <li className="py-3">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium text-gray-900">{answer.question}</span>
-        <VerdictPill verdict={answer.verdict} />
+        <span className="font-medium text-pw-ink">{answer.question}</span>
+        <StatusPill tone={v.tone}>{v.label}</StatusPill>
       </div>
-      <p className="mt-1 text-sm text-gray-600">{answer.explanation}</p>
-      <p className="mt-1 text-xs text-gray-400">{answer.citation}</p>
+      <p className="mt-1 text-sm text-pw-sub">{answer.explanation}</p>
+      <p className="mt-1 text-xs tabular-nums text-pw-faint">{answer.citation}</p>
     </li>
   );
 }
 
-/**
- * "What can I do here?" panel. Verdicts are computed from the King County Code
- * with citations; always informational, never a legal determination.
- */
-export function ZoningPanel({
-  sourced,
-}: {
-  sourced: SourcedValue<ZoningAnalysis>;
-}) {
+export function ZoningPanel({ sourced }: { sourced: SourcedValue<ZoningAnalysis> }) {
   const z = sourced.value;
   return (
-    <section
-      aria-label="What you can do here (zoning)"
-      className="rounded-xl border border-gray-200 p-5"
-    >
-      <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">What can I do here?</h2>
-        <ProvenanceBadgeFor sourced={sourced} />
-      </div>
-
+    <Panel title="What can I do here?" icon={Scale} sourced={sourced}>
       {!z ? (
-        <p className="mt-2 text-sm italic text-gray-400">
-          Zoning data unavailable.
-        </p>
+        <p className="text-sm text-pw-faint">Zoning data unavailable.</p>
       ) : (
         <>
-          <p className="mb-3 text-sm text-gray-500">
+          <p className="mb-2 text-sm text-pw-sub">
             {z.zoneCode} · {z.zoneName}
           </p>
 
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y-[0.5px] divide-pw-divider">
             {z.answers.map((a) => (
               <AnswerRow key={a.question} answer={a} />
             ))}
           </ul>
 
           {z.standards.length > 0 && (
-            <dl className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
+            <dl className="mt-3 divide-y-[0.5px] divide-pw-divider border-t-[0.5px] border-pw-divider">
               {z.standards.map((s) => (
-                <div key={s.label} className="flex justify-between gap-4 py-2 text-sm">
-                  <dt className="text-gray-500">
+                <div
+                  key={s.label}
+                  className="flex items-baseline justify-between gap-4 py-2 text-sm"
+                >
+                  <dt className="text-pw-sub">
                     {s.label}
                     {standardTip(s.label) && (
                       <InfoTip label={s.label} text={standardTip(s.label)!} />
                     )}
                   </dt>
-                  <dd className="text-right font-medium text-gray-900">
+                  <dd className="text-right font-medium tabular-nums text-pw-ink">
                     {s.value}
-                    <span className="block text-xs font-normal text-gray-400">
+                    <span className="block text-xs font-normal tabular-nums text-pw-faint">
                       {s.citation}
                     </span>
                   </dd>
@@ -103,16 +80,16 @@ export function ZoningPanel({
           )}
 
           {z.notes.map((n) => (
-            <p key={n} className="mt-3 text-xs text-gray-500">
+            <p key={n} className="mt-3 text-xs text-pw-sub">
               {n}
             </p>
           ))}
 
-          <p className="mt-3 border-t border-gray-100 pt-3 text-xs text-gray-400">
+          <p className="mt-3 border-t-[0.5px] border-pw-divider pt-3 text-xs text-pw-faint">
             {ZONING_DISCLAIMER}
           </p>
         </>
       )}
-    </section>
+    </Panel>
   );
 }

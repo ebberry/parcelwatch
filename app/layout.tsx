@@ -1,5 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Lora } from "next/font/google";
 import "./globals.css";
+
+// Body / data / numbers — clean neutral sans, two weights, tabular figures.
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+// The one place character lives: the property address headline. Warm serif.
+const lora = Lora({
+  subsets: ["latin"],
+  weight: ["500"],
+  variable: "--font-serif",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ParcelWatch — your property, explained",
@@ -12,7 +29,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#ffffff",
+  themeColor: "#0f6e56",
 };
 
 export default function RootLayout({
@@ -21,8 +38,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen antialiased">
+    <html lang="en" className={`${inter.variable} ${lora.variable}`}>
+      <body className="min-h-screen bg-pw-bg font-sans text-pw-ink antialiased">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2 focus:shadow"

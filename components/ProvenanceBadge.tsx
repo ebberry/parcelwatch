@@ -1,12 +1,12 @@
 import type { Confidence, SourcedValue } from "@/lib/provenance";
 
 /**
- * Provenance is a first-class UI component, not a tooltip afterthought.
- * It renders: source name + last-refreshed date + a confidence dot.
- * Used consistently everywhere a datum appears. No naked numbers in the app.
+ * The signature component. Every datum carries this quiet, recessed provenance
+ * line: source · ●label · checked date. Faint grey, present without shouting —
+ * the visual embodiment of "we'll always tell you where this came from."
  *
- * Accessibility: the dot has a text label for screen readers; the whole badge
- * is a single labelled element so it reads as one unit.
+ * The dot is NEVER the only signal — a sentence-case text label always
+ * accompanies it (color-blind users + clarity). See /docs/design-system.md.
  */
 
 const CONFIDENCE_META: Record<
@@ -15,36 +15,36 @@ const CONFIDENCE_META: Record<
 > = {
   confirmed: {
     dot: "bg-confidence-confirmed",
-    label: "Confirmed",
-    srLabel: "Confirmed — authoritatively verified",
+    label: "confirmed",
+    srLabel: "confirmed — authoritatively verified",
   },
   live: {
     dot: "bg-confidence-live",
-    label: "Live",
-    srLabel: "Live — fresh within the source's update window",
+    label: "live",
+    srLabel: "live — freshly pulled; verify against the source if it matters",
   },
   stale: {
     dot: "bg-confidence-stale",
-    label: "Unverified",
-    srLabel: "Stale — past the source's update window, not yet re-verified",
+    label: "needs check",
+    srLabel: "needs check — past the source's update window",
   },
   unavailable: {
     dot: "bg-confidence-unavailable",
-    label: "Unavailable",
-    srLabel: "Unavailable — source could not be reached",
+    label: "unavailable",
+    srLabel: "unavailable — source could not be reached",
   },
 };
 
-function formatFetchedAt(iso: string | null): string {
-  if (!iso) return "no data yet";
+function formatChecked(iso: string | null): string {
+  if (!iso) return "not yet checked";
   const ms = Date.parse(iso);
-  if (Number.isNaN(ms)) return "unknown date";
-  const d = new Date(ms);
-  return d.toLocaleDateString("en-US", {
+  if (Number.isNaN(ms)) return "date unknown";
+  const d = new Date(ms).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
   });
+  return `checked ${d}`;
 }
 
 export interface ProvenanceBadgeProps {
@@ -61,28 +61,24 @@ export function ProvenanceBadge({
   className = "",
 }: ProvenanceBadgeProps) {
   const meta = CONFIDENCE_META[confidence];
-  const dateLabel = formatFetchedAt(fetchedAt);
-  const human = `${source} · ${meta.label} · updated ${dateLabel}`;
+  const checked = formatChecked(fetchedAt);
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700 ${className}`}
-      aria-label={`Source: ${source}. ${meta.srLabel}. Last updated ${dateLabel}.`}
-      title={human}
+      className={`inline-flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs leading-tight text-pw-faint ${className}`}
+      aria-label={`Source: ${source}. ${meta.srLabel}. ${checked}.`}
     >
-      <span
-        className={`h-2 w-2 shrink-0 rounded-full ${meta.dot}`}
-        aria-hidden="true"
-      />
-      <span className="font-medium">{source}</span>
-      <span className="text-gray-400" aria-hidden="true">
-        ·
+      <span>{source}</span>
+      <span aria-hidden="true">·</span>
+      <span className="inline-flex items-center gap-1">
+        <span
+          className={`h-1.5 w-1.5 shrink-0 rounded-full ${meta.dot}`}
+          aria-hidden="true"
+        />
+        {meta.label}
       </span>
-      <span>{meta.label}</span>
-      <span className="text-gray-400" aria-hidden="true">
-        ·
-      </span>
-      <span className="tabular-nums">{dateLabel}</span>
+      <span aria-hidden="true">·</span>
+      <span className="tabular-nums">{checked}</span>
     </span>
   );
 }

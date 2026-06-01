@@ -4,6 +4,36 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — "Calm civic" aesthetic (design system applied)
+
+### Adopted the user's design guide as the source of truth
+**Why:** Forest-green palette + serif address headline (Lora) + Inter body, white
+cards on a pale-green field, recessed provenance lines, reassuring quiet states.
+Tokens in `tailwind.config.ts` (`pw.*`, `confidence.*`), fonts in the layout,
+primitives in `components/Panel.tsx`. Guide saved to `/docs/design-system.md`.
+
+### Confidence: 4 internal states mapped to the guide's 3 dot colors
+**Why:** The guide specifies confirmed=green, live/needs-verify=amber,
+unavailable=grey. Our model has a 4th (`stale`). Mapping: confirmed→green,
+live→amber, stale→amber ("needs check" label), unavailable→grey. The dot is never
+the only signal — a sentence-case label always accompanies it. Net effect:
+computed/authoritative things (zoning verdicts, tax deadlines) read green; live
+county data reads amber — exactly the "live-data flag" intent.
+
+### Two font weights only; proper-case addresses (never ALL CAPS)
+**Why:** The guide caps weight at 500 — replaced every `font-semibold/bold` in UI
+chrome with `font-medium` (the printable BoE petition keeps document-style bold,
+a deliberate exception). King County returns ALL-CAPS addresses/names;
+`lib/format.ts` proper-cases them (`12825 SW Bachelor Rd`, keeping directionals
+and acronyms), satisfying "never ALL CAPS" without mangling proper nouns.
+
+### Status strip on a green tint, not the pale-green page
+**Why:** Page bg and the guide's "status strip" are both pale green, so a literal
+reading would make the strip invisible. Used `bg-pw-accent/10` + a 0.5px border so
+the ambient state band reads as distinct on the page.
+
+---
+
 ## 2026-05-31 — Slice 5: the watches (infra + first standing watch)
 
 ### Native Homebrew Postgres + Redis (not Docker), PostGIS deferred

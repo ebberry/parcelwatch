@@ -1,12 +1,19 @@
-import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
+import { CalendarClock } from "lucide-react";
+import { Panel } from "@/components/Panel";
 import type { SourcedValue } from "@/lib/provenance";
 import type { TaxCalendar, Deadline } from "@/lib/tax/service";
 
 function timing(d: Deadline): string {
-  if (d.daysAway === 0) return "Due today";
-  if (d.passed) return "Passed";
-  if (d.daysAway === 1) return "In 1 day";
-  return `In ${d.daysAway} days`;
+  if (d.daysAway === 0) return "due today";
+  if (d.passed) return "passed";
+  if (d.daysAway === 1) return "in 1 day";
+  return `in ${d.daysAway} days`;
+}
+
+function timingTone(d: Deadline): string {
+  if (d.passed) return "text-pw-faint";
+  if (d.daysAway <= 30) return "text-pw-amber"; // approaching
+  return "text-pw-green";
 }
 
 function DeadlineRow({
@@ -17,55 +24,31 @@ function DeadlineRow({
   highlight?: boolean;
 }) {
   return (
-    <li
-      className={`py-3 ${highlight ? "rounded-lg bg-sky-50 px-3" : ""}`}
-    >
+    <li className={`py-3 ${highlight ? "-mx-2 rounded-lg bg-pw-inset px-2" : ""}`}>
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium text-gray-900">{deadline.label}</span>
-        <span
-          className={`shrink-0 text-sm ${
-            deadline.passed ? "text-gray-400" : "text-confidence-live"
-          }`}
-        >
+        <span className="font-medium text-pw-ink">{deadline.label}</span>
+        <span className={`shrink-0 text-sm tabular-nums ${timingTone(deadline)}`}>
           {timing(deadline)}
         </span>
       </div>
-      <div className="mt-0.5 text-sm text-gray-600">
-        {deadline.dateLabel}
-        <span className="text-gray-400"> · {deadline.citation}</span>
+      <div className="mt-0.5 text-sm text-pw-sub">
+        <span className="tabular-nums">{deadline.dateLabel}</span>
+        <span className="text-pw-faint"> · {deadline.citation}</span>
       </div>
-      {deadline.note && (
-        <p className="mt-1 text-xs text-gray-400">{deadline.note}</p>
-      )}
+      {deadline.note && <p className="mt-1 text-xs text-pw-faint">{deadline.note}</p>}
     </li>
   );
 }
 
-/**
- * Taxes & deadlines panel. Dates are computed from statute (confidence
- * "confirmed"); the badge names the rules. Informational, not legal advice.
- */
-export function TaxDeadlines({
-  sourced,
-}: {
-  sourced: SourcedValue<TaxCalendar>;
-}) {
+export function TaxDeadlines({ sourced }: { sourced: SourcedValue<TaxCalendar> }) {
   const cal = sourced.value;
   return (
-    <section
-      aria-label="Taxes and deadlines"
-      className="rounded-xl border border-gray-200 p-5"
-    >
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">Taxes &amp; deadlines</h2>
-        <ProvenanceBadgeFor sourced={sourced} />
-      </div>
-
+    <Panel title="Taxes & deadlines" icon={CalendarClock} sourced={sourced}>
       {!cal ? (
-        <p className="text-sm italic text-gray-400">Not available</p>
+        <p className="text-sm text-pw-faint">Not available</p>
       ) : (
         <>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y-[0.5px] divide-pw-divider">
             <DeadlineRow deadline={cal.next} highlight />
             {cal.next.label !== cal.firstHalf.label && (
               <DeadlineRow deadline={cal.firstHalf} />
@@ -75,12 +58,12 @@ export function TaxDeadlines({
             )}
             <DeadlineRow deadline={cal.appeal} />
           </ul>
-          <p className="mt-3 text-xs text-gray-400">
-            Informational only — these are statutory rules, not your specific
-            bill. Confirm exact amounts and dates with King County Treasury.
+          <p className="mt-3 text-xs text-pw-faint">
+            Informational only — these are statutory rules, not your specific bill.
+            Confirm exact amounts and dates with King County Treasury.
           </p>
         </>
       )}
-    </section>
+    </Panel>
   );
 }

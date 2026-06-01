@@ -57,16 +57,16 @@ export function AppealBuilder({
     <div className="mt-6">
       {/* Comparable-assessment evidence */}
       {comp && (
-        <section className="no-print rounded-xl border border-gray-200 p-5">
+        <section className="no-print rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold">Comparable assessments</h2>
+            <h2 className="text-[15px] font-medium text-pw-ink">Comparable assessments</h2>
             <ProvenanceBadge {...compProvenance} />
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-pw-sub">
             {comp.appearsHigh ? (
               <>
                 This property is assessed about{" "}
-                <span className="font-semibold text-confidence-stale">
+                <span className="font-medium text-pw-amber">
                   {comp.subjectVsMedianPct}% above
                 </span>{" "}
                 the median of {comp.comps.length} comparable nearby properties (per
@@ -82,7 +82,7 @@ export function AppealBuilder({
               </>
             )}
           </p>
-          <p className="mt-1 text-xs text-gray-400">
+          <p className="mt-1 text-xs text-pw-faint">
             Per-lot-square-foot is a rough screen — it doesn&apos;t account for
             building size or condition. Not a formal appraisal.
           </p>
@@ -91,30 +91,30 @@ export function AppealBuilder({
 
       {/* Form */}
       <form className="no-print mt-6 flex flex-col gap-4">
-        <h2 className="text-lg font-semibold">Your details</h2>
+        <h2 className="text-[15px] font-medium text-pw-ink">Your details</h2>
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Owner name (as on the deed)</span>
+          <span className="mb-1 block text-pw-sub">Owner name (as on the deed)</span>
           <input
             value={ownerName}
             onChange={(e) => setOwnerName(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="w-full rounded-lg border-[0.5px] border-pw-border bg-pw-card px-3 py-2 text-pw-ink"
             autoComplete="name"
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">Contact (mailing address, phone, email)</span>
+          <span className="mb-1 block text-pw-sub">Contact (mailing address, phone, email)</span>
           <textarea
             value={contact}
             onChange={(e) => setContact(e.target.value)}
             rows={2}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="w-full rounded-lg border-[0.5px] border-pw-border bg-pw-card px-3 py-2 text-pw-ink"
           />
         </label>
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">
+          <span className="mb-1 block text-pw-sub">
             Your opinion of the property&apos;s value
             {comp?.medianAssessedTotal != null && (
-              <span className="text-gray-400">
+              <span className="text-pw-faint">
                 {" "}
                 (comparable median: {usd(comp.medianAssessedTotal)})
               </span>
@@ -125,12 +125,12 @@ export function AppealBuilder({
             onChange={(e) => setOpinion(e.target.value)}
             inputMode="numeric"
             placeholder="$"
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="w-full rounded-lg border-[0.5px] border-pw-border bg-pw-card px-3 py-2 text-pw-ink"
           />
         </label>
 
         <fieldset className="text-sm">
-          <legend className="mb-1 text-gray-600">Reasons for the appeal</legend>
+          <legend className="mb-1 text-pw-sub">Reasons for the appeal</legend>
           <div className="flex flex-col gap-2">
             {APPEAL_REASONS.map((r) => (
               <label key={r.key} className="flex items-start gap-2">
@@ -147,14 +147,14 @@ export function AppealBuilder({
         </fieldset>
 
         <label className="text-sm">
-          <span className="mb-1 block text-gray-600">
+          <span className="mb-1 block text-pw-sub">
             Explanation / grounds (edit freely)
           </span>
           <textarea
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
             rows={6}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2"
+            className="w-full rounded-lg border-[0.5px] border-pw-border bg-pw-card px-3 py-2 text-pw-ink"
           />
         </label>
       </form>
@@ -164,7 +164,7 @@ export function AppealBuilder({
         <h2 className="text-xl font-bold">
           Taxpayer Petition — King County Board of Equalization
         </h2>
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-pw-faint">
           Draft prepared by ParcelWatch · review before filing
         </p>
 
@@ -190,7 +190,7 @@ export function AppealBuilder({
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-gray-400">—</p>
+          <p className="text-sm text-pw-faint">—</p>
         )}
 
         <h3 className="mt-4 font-semibold">Explanation &amp; evidence</h3>
@@ -203,7 +203,7 @@ export function AppealBuilder({
             </h3>
             <table className="mt-1 w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-gray-300 text-gray-500">
+                <tr className="border-b border-gray-300 text-pw-faint">
                   <th className="py-1">Address</th>
                   <th className="py-1 text-right">Lot sq ft</th>
                   <th className="py-1 text-right">Assessed</th>
@@ -227,7 +227,7 @@ export function AppealBuilder({
                 </tr>
               </tbody>
             </table>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-pw-faint">
               Source: {compProvenance.source}. Comparable median ≈{" "}
               {usd(comp.medianAssessedTotal)} total, {usd(comp.medianPerLotSqFt)} per lot sq ft.
             </p>
@@ -240,7 +240,7 @@ export function AppealBuilder({
         <button
           type="button"
           onClick={() => window.print()}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-base font-medium text-white"
+          className="rounded-lg bg-pw-green px-4 py-2 text-base font-medium text-white hover:bg-pw-ink"
         >
           Print / Save as PDF
         </button>
@@ -248,11 +248,11 @@ export function AppealBuilder({
           href={eAppealsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-gray-900 px-4 py-2 text-base font-medium text-gray-900"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border-[0.5px] border-pw-green px-4 py-2 text-base font-medium text-pw-green hover:bg-pw-accent/10"
         >
           File it on King County eAppeals <span aria-hidden="true">↗</span>
         </a>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-pw-faint">
           You file the petition yourself through King County&apos;s portal (or by
           mail using the{" "}
           <a href={boeFormsUrl} target="_blank" rel="noopener noreferrer" className="underline">
@@ -269,7 +269,7 @@ export function AppealBuilder({
 function PetitionRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4 border-b border-gray-100 py-1.5 text-sm">
-      <span className="text-gray-500">{label}</span>
+      <span className="text-pw-faint">{label}</span>
       <span className="text-right font-medium">{value}</span>
     </div>
   );

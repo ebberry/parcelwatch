@@ -36,7 +36,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
         aria-expanded={open}
         aria-describedby={open ? id : undefined}
         onClick={() => setOpen((o) => !o)}
-        className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-300 text-[10px] font-semibold leading-none text-gray-500 hover:bg-gray-100 focus-visible:bg-gray-100"
+        className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full border-[0.5px] border-pw-border text-[10px] font-medium leading-none text-pw-sub hover:bg-pw-inset focus-visible:bg-pw-inset"
       >
         i
       </button>
@@ -44,7 +44,7 @@ export function InfoTip({ label, text }: { label: string; text: string }) {
         <span
           role="tooltip"
           id={id}
-          className="absolute left-0 top-6 z-20 block w-64 rounded-lg border border-gray-200 bg-white p-3 text-left text-xs font-normal leading-relaxed text-gray-600 shadow-lg"
+          className="absolute left-0 top-6 z-20 block w-64 rounded-lg border-[0.5px] border-pw-border bg-pw-card p-3 text-left text-xs font-normal leading-relaxed text-pw-sub shadow-lg"
         >
           {text}
         </span>

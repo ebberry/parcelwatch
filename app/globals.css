@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
+  --background: #e1f5ee; /* pale green page */
+  --foreground: #04342c; /* ink */
 }
 
 html {
@@ -14,11 +14,12 @@ html {
 body {
   color: var(--foreground);
   background: var(--background);
+  font-feature-settings: "tnum"; /* tabular figures align dollar columns + dates */
 }
 
-/* Visible focus for keyboard users (WCAG 2.1 AA). */
+/* Visible focus for keyboard users (WCAG 2.1 AA) — in the brand green. */
 :focus-visible {
-  outline: 2px solid #0369a1;
+  outline: 2px solid #0f6e56;
   outline-offset: 2px;
 }
 

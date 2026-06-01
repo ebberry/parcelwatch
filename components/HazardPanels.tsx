@@ -1,5 +1,5 @@
-import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
-import { Field } from "@/components/ReportPanel";
+import { Waves, Activity } from "lucide-react";
+import { Panel, Field, StatusPill, QuietNote } from "@/components/Panel";
 import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import type { FloodHazard, SeismicActivity, Earthquake } from "@/lib/hazards/service";
@@ -15,58 +15,44 @@ function shortDate(iso: string | null): string {
   });
 }
 
-function PanelShell({
-  title,
-  sourced,
-  children,
-}: {
-  title: string;
-  sourced: SourcedValue<unknown>;
-  children: React.ReactNode;
-}) {
+function floodPill(f: FloodHazard | null) {
+  if (!f || !f.mapped) return undefined;
+  if (f.inSFHA) return <StatusPill tone="watch">High-risk zone</StatusPill>;
   return (
-    <section aria-label={title} className="rounded-xl border border-gray-200 p-5">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <ProvenanceBadgeFor sourced={sourced} />
-      </div>
-      {children}
-    </section>
+    <StatusPill tone="good">
+      {f.floodZone ? `Zone ${f.floodZone} · minimal` : "Minimal"}
+    </StatusPill>
   );
 }
 
 export function FloodPanel({ sourced }: { sourced: SourcedValue<FloodHazard> }) {
   const f = sourced.value;
   return (
-    <PanelShell title="Flood risk" sourced={sourced}>
+    <Panel title="Flood risk" icon={Waves} pill={floodPill(f)} sourced={sourced}>
       {!f ? (
-        <p className="text-sm italic text-gray-400">Not available</p>
+        <p className="text-sm text-pw-faint">Not available</p>
       ) : !f.mapped ? (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-pw-sub">
           This location isn&apos;t covered by FEMA&apos;s mapped flood data.
         </p>
       ) : (
         <>
           {f.inSFHA ? (
-            <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-medium text-confidence-stale">
-              High-risk flood area — Special Flood Hazard Area. Flood insurance is
-              typically required for federally backed mortgages.
+            <p className="mb-2 text-sm text-pw-sub">
+              In a Special Flood Hazard Area — flood insurance is typically
+              required for federally backed mortgages.
             </p>
           ) : (
-            <p className="mb-3 rounded-lg bg-green-50 px-3 py-2 text-sm font-medium text-confidence-confirmed">
-              Minimal flood hazard at this location.
-            </p>
+            <QuietNote>Minimal flood hazard at this location.</QuietNote>
           )}
-          <dl className="divide-y divide-gray-100">
+          <dl className="mt-2 divide-y-[0.5px] divide-pw-divider">
             <Field
               label="Flood zone"
-              value={
-                f.zoneSubtype ? `${f.floodZone} — ${f.zoneSubtype}` : f.floodZone
-              }
+              value={f.zoneSubtype ? `${f.floodZone} — ${f.zoneSubtype}` : f.floodZone}
               tip={GLOSSARY.floodZone}
             />
             <Field
-              label="Special Flood Hazard Area"
+              label="Special flood hazard area"
               value={f.inSFHA == null ? null : f.inSFHA ? "Yes" : "No"}
               tip={GLOSSARY.sfha}
             />
@@ -80,65 +66,61 @@ export function FloodPanel({ sourced }: { sourced: SourcedValue<FloodHazard> }) 
           </dl>
         </>
       )}
-    </PanelShell>
+    </Panel>
   );
 }
 
 function QuakeRow({ q }: { q: Earthquake }) {
   return (
     <li className="flex items-baseline justify-between gap-3 py-2 text-sm">
-      <span className="text-gray-900">
-        <span className="font-medium tabular-nums">
-          M{q.magnitude?.toFixed(1) ?? "—"}
-        </span>{" "}
-        <span className="text-gray-600">{q.place ?? "Unknown location"}</span>
+      <span className="text-pw-ink">
+        <span className="font-medium tabular-nums">M{q.magnitude?.toFixed(1) ?? "—"}</span>{" "}
+        <span className="text-pw-sub">{q.place ?? "Unknown location"}</span>
       </span>
-      <span className="shrink-0 text-right text-gray-500">
-        {shortDate(q.time)}
+      <span className="shrink-0 text-right text-pw-faint">
+        <span className="tabular-nums">{shortDate(q.time)}</span>
         {q.distanceKm != null && (
-          <span className="block text-xs text-gray-400">{q.distanceKm} km away</span>
+          <span className="block text-xs tabular-nums">{q.distanceKm} km away</span>
         )}
       </span>
     </li>
   );
 }
 
-export function SeismicPanel({
-  sourced,
-}: {
-  sourced: SourcedValue<SeismicActivity>;
-}) {
+export function SeismicPanel({ sourced }: { sourced: SourcedValue<SeismicActivity> }) {
   const s = sourced.value;
   return (
-    <PanelShell title="Earthquakes nearby" sourced={sourced}>
+    <Panel title="Earthquakes nearby" icon={Activity} sourced={sourced}>
       {!s ? (
-        <p className="text-sm italic text-gray-400">Not available</p>
+        <p className="text-sm text-pw-faint">Not available</p>
       ) : s.count === 0 ? (
-        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm font-medium text-confidence-confirmed">
-          No earthquakes of magnitude {s.minMagnitude}+ recorded within{" "}
-          {s.radiusKm} km in the past year.
-        </p>
+        <QuietNote>
+          No earthquakes of magnitude {s.minMagnitude}+ within {s.radiusKm} km in
+          the past year.
+        </QuietNote>
       ) : (
         <>
-          <p className="text-sm text-gray-600">
-            <span className="font-medium text-gray-900">{s.count}</span> earthquake
-            {s.count === 1 ? "" : "s"} of magnitude {s.minMagnitude}+ within{" "}
-            {s.radiusKm} km in the past year.
+          <p className="text-sm text-pw-sub">
+            <span className="font-medium tabular-nums text-pw-ink">{s.count}</span>{" "}
+            earthquakes of magnitude {s.minMagnitude}+ within {s.radiusKm} km in the
+            past year.
           </p>
           {s.largest && (
-            <p className="mt-1 text-sm text-gray-600">
-              Largest: <span className="font-medium">M{s.largest.magnitude?.toFixed(1)}</span>
-              {s.largest.place ? ` · ${s.largest.place}` : ""} ·{" "}
-              {shortDate(s.largest.time)}
+            <p className="mt-1 text-sm text-pw-sub">
+              Largest:{" "}
+              <span className="font-medium tabular-nums text-pw-ink">
+                M{s.largest.magnitude?.toFixed(1)}
+              </span>
+              {s.largest.place ? ` · ${s.largest.place}` : ""} · {shortDate(s.largest.time)}
             </p>
           )}
-          <ul className="mt-2 divide-y divide-gray-100 border-t border-gray-100">
+          <ul className="mt-2 divide-y-[0.5px] divide-pw-divider border-t-[0.5px] border-pw-divider">
             {s.recent.map((q, i) => (
               <QuakeRow key={q.url ?? i} q={q} />
             ))}
           </ul>
         </>
       )}
-    </PanelShell>
+    </Panel>
   );
 }
