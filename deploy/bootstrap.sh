@@ -79,6 +79,17 @@ if [ "$bx_ok" = 0 ]; then
   docker buildx version 2>/dev/null | head -1 || true
 fi
 
+# The Next.js build is memory-hungry; on a small (2 GB) box it can get
+# OOM-killed. Add a 2 GB swap file as insurance if there's little RAM and no swap.
+if [ ! -e /swapfile ] && [ "$(free -m | awk '/^Mem:/{print $2}')" -lt 3000 ]; then
+  say "Adding a 2 GB swap file so the build doesn't run out of memory..."
+  sudo fallocate -l 2G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile >/dev/null
+  sudo swapon /swapfile
+  grep -q '/swapfile' /etc/fstab 2>/dev/null || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+fi
+
 # Use sudo for docker so it works before the group membership takes effect.
 COMPOSE="sudo $COMPOSE"
 
