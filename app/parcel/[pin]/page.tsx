@@ -150,102 +150,110 @@ export default async function ParcelPage({
 
           <ReportSummary findings={findings} />
 
-          <div className="mt-5 flex flex-col gap-4">
-            <Panel title="What you own" icon={Home} sourced={sv}>
-              <dl className="divide-y-[0.5px] divide-pw-divider">
-                <Field label="Present use" value={p.presentUse} tip={GLOSSARY.presentUse} />
-                <Field
-                  label="Property type"
-                  value={
-                    propertyType
-                      ? `${propertyType.label} (${propertyType.code})`
-                      : p.propertyType
-                  }
-                  tip={GLOSSARY.propertyType}
-                />
-                <Field label="Legal description" value={p.legalDescription} />
-              </dl>
-            </Panel>
-
-            <Panel title="Assessed value" icon={Landmark} sourced={sv}>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
+          <div className="mt-6 flex flex-col gap-7">
+            <ReportGroup label="Your money">
+              <Panel title="Assessed value" icon={Landmark} sourced={sv}>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <MetricTile
+                      label="Total appraised"
+                      value={formatUSD(assessment?.appraisedTotal) ?? "—"}
+                      sub={assessment?.taxYear ? `${assessment.taxYear} tax year` : undefined}
+                      tip={GLOSSARY.assessedValue}
+                    />
+                  </div>
                   <MetricTile
-                    label="Total appraised"
-                    value={formatUSD(assessment?.appraisedTotal) ?? "—"}
-                    sub={assessment?.taxYear ? `${assessment.taxYear} tax year` : undefined}
-                    tip={GLOSSARY.assessedValue}
+                    label="Land"
+                    value={formatUSD(assessment?.appraisedLand) ?? "—"}
+                  />
+                  <MetricTile
+                    label="Improvements"
+                    value={formatUSD(assessment?.appraisedImprovement) ?? "—"}
                   />
                 </div>
-                <MetricTile
-                  label="Land"
-                  value={formatUSD(assessment?.appraisedLand) ?? "—"}
-                />
-                <MetricTile
-                  label="Improvements"
-                  value={formatUSD(assessment?.appraisedImprovement) ?? "—"}
+                <dl className="mt-3 divide-y-[0.5px] divide-pw-divider">
+                  <Field
+                    label="Levy jurisdiction"
+                    value={assessment?.levyJurisdiction}
+                    tip={GLOSSARY.levy}
+                  />
+                </dl>
+              </Panel>
+
+              {recommendation && (
+                <div id="appeal" className="scroll-mt-4">
+                  <AppealCallout pin={p.pin} rec={recommendation} />
+                </div>
+              )}
+
+              <div id="tax" className="scroll-mt-4">
+                <TaxDeadlines sourced={taxCalendar} />
+              </div>
+            </ReportGroup>
+
+            <ReportGroup label="The property">
+              <Panel title="What you own" icon={Home} sourced={sv}>
+                <dl className="divide-y-[0.5px] divide-pw-divider">
+                  <Field label="Present use" value={p.presentUse} tip={GLOSSARY.presentUse} />
+                  <Field
+                    label="Property type"
+                    value={
+                      propertyType
+                        ? `${propertyType.label} (${propertyType.code})`
+                        : p.propertyType
+                    }
+                    tip={GLOSSARY.propertyType}
+                  />
+                  <Field label="Legal description" value={p.legalDescription} />
+                </dl>
+              </Panel>
+
+              <Panel title="Lot" icon={Ruler} sourced={sv}>
+                <dl className="divide-y-[0.5px] divide-pw-divider">
+                  <Field label="Lot size" value={formatInt(p.lotSqFt)} suffix="sq ft" />
+                  <Field label="Area" value={formatAcres(p.acres)} suffix="acres" />
+                </dl>
+              </Panel>
+
+              <ZoningPanel sourced={zoning} />
+            </ReportGroup>
+
+            <ReportGroup label="Risks & site">
+              <div id="flood" className="scroll-mt-4">
+                <FloodPanel sourced={flood} />
+              </div>
+
+              <div id="seismic" className="scroll-mt-4">
+                <SeismicPanel sourced={seismic} />
+              </div>
+
+              <div id="epa" className="scroll-mt-4">
+                <NearbySitesPanel
+                  title="EPA-regulated sites nearby"
+                  icon={Factory}
+                  sourced={epa}
+                  noneMessage="No EPA-regulated facilities within 2 miles."
                 />
               </div>
-              <dl className="mt-3 divide-y-[0.5px] divide-pw-divider">
-                <Field
-                  label="Levy jurisdiction"
-                  value={assessment?.levyJurisdiction}
-                  tip={GLOSSARY.levy}
-                />
-              </dl>
-            </Panel>
 
-            {recommendation && (
-              <div id="appeal" className="scroll-mt-4">
-                <AppealCallout pin={p.pin} rec={recommendation} />
-              </div>
-            )}
-
-            <Panel title="Lot" icon={Ruler} sourced={sv}>
-              <dl className="divide-y-[0.5px] divide-pw-divider">
-                <Field label="Lot size" value={formatInt(p.lotSqFt)} suffix="sq ft" />
-                <Field label="Area" value={formatAcres(p.acres)} suffix="acres" />
-              </dl>
-            </Panel>
-
-            <ZoningPanel sourced={zoning} />
-
-            <div id="flood" className="scroll-mt-4">
-              <FloodPanel sourced={flood} />
-            </div>
-
-            <div id="seismic" className="scroll-mt-4">
-              <SeismicPanel sourced={seismic} />
-            </div>
-
-            <div id="epa" className="scroll-mt-4">
-              <NearbySitesPanel
-                title="EPA-regulated sites nearby"
-                icon={Factory}
-                sourced={epa}
-                noneMessage="No EPA-regulated facilities within 2 miles."
+              <WaterPanel
+                parcelId={p.pin}
+                lookup={water.value}
+                provenance={{
+                  source: water.source,
+                  fetchedAt: water.fetchedAt,
+                  confidence: water.confidence,
+                }}
               />
-            </div>
+            </ReportGroup>
 
-            <WaterPanel
-              parcelId={p.pin}
-              lookup={water.value}
-              provenance={{
-                source: water.source,
-                fetchedAt: water.fetchedAt,
-                confidence: water.confidence,
-              }}
-            />
+            <ReportGroup label="Around you">
+              <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
 
-            <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
-
-            <div id="activity" className="scroll-mt-4">
-              <ActivityPanel sourced={councilActivity} />
-            </div>
-
-            <div id="tax" className="scroll-mt-4">
-              <TaxDeadlines sourced={taxCalendar} />
-            </div>
+              <div id="activity" className="scroll-mt-4">
+                <ActivityPanel sourced={councilActivity} />
+              </div>
+            </ReportGroup>
 
             <section
               aria-label="Official county record"
@@ -280,5 +288,24 @@ export default async function ParcelPage({
         </>
       )}
     </main>
+  );
+}
+
+/** A labelled group of panels — gives the report a money → property → risks →
+ * context narrative instead of a flat, equal-weight stack. */
+function ReportGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h2 className="mb-3 px-1 text-xs font-medium uppercase tracking-wide text-pw-faint">
+        {label}
+      </h2>
+      <div className="flex flex-col gap-4">{children}</div>
+    </section>
   );
 }
