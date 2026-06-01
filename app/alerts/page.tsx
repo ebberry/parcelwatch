@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Bell, ChevronLeft } from "lucide-react";
 import { getSession } from "@/lib/auth";
-import { getAlerts, getUnreadAlertCount } from "@/lib/watches/service";
-import { topicLabel } from "@/lib/watches";
+import { signOut } from "@/auth";
+import {
+  getAlerts,
+  getUnreadAlertCount,
+  ensureDefaultWatch,
+} from "@/lib/watches/service";
 import { AlertsFeed } from "@/components/AlertsFeed";
 import { BrandMark } from "@/components/BrandMark";
 
@@ -12,31 +17,39 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-function shortDate(date: Date | null): string {
-  if (!date) return "";
-  return new Date(date).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 export default async function AlertsPage() {
   const session = await getSession();
+  if (!session) redirect("/signin?callbackUrl=/alerts");
+
+  // First visit: make sure the user has a default council watch.
+  await ensureDefaultWatch(session.userId, null);
+
   const [alerts, unread] = await Promise.all([
-    getAlerts(session!.userId, 50),
-    getUnreadAlertCount(session!.userId),
+    getAlerts(session.userId, 50),
+    getUnreadAlertCount(session.userId),
   ]);
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1 text-sm text-pw-green hover:underline"
-      >
-        <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-        Home
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm text-pw-green hover:underline"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          Home
+        </Link>
+        <form
+          action={async () => {
+            "use server";
+            await signOut({ redirectTo: "/" });
+          }}
+        >
+          <button type="submit" className="text-sm text-pw-sub hover:text-pw-green">
+            Sign out
+          </button>
+        </form>
+      </div>
 
       <header className="mb-6 mt-5">
         <BrandMark className="mb-4" />
@@ -55,6 +68,7 @@ export default async function AlertsPage() {
           Changes and new items from your standing watches — King County Council
           legislation and more.
         </p>
+        <p className="mt-1 text-xs text-pw-faint">Signed in as {session.email}</p>
       </header>
 
       {alerts.length === 0 ? (

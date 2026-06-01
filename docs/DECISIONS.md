@@ -4,6 +4,34 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Phase 6: real auth (Auth.js magic-link)
+
+### Auth.js v5 + Drizzle/Postgres adapter, database sessions
+**Why:** The chosen self-hosted magic-link provider (~$0 marginal cost). Users,
+accounts, sessions, and verification tokens live in Postgres via
+`@auth/drizzle-adapter`. Sign-in verified end-to-end (request link → user +
+session created → redirect to /alerts).
+
+### Dev email transport (no SMTP needed locally)
+**Why:** The Nodemailer provider's `sendVerificationRequest` is overridden to log
+the magic link to the console + write it to `/tmp/parcelwatch-magic-link.txt`,
+so the full flow is testable locally with no email service. A real provider
+plugs in via `EMAIL_SERVER` (SMTP/Resend) with no code change.
+
+### Protection in pages via auth(), not middleware
+**Why:** next-auth v5 middleware runs on Edge, but our DB adapter (postgres) +
+`node:fs` are Node-only. So `auth.ts` is never imported into middleware; `/alerts`
+checks `getSession()` and redirects to `/signin`. Public pages (landing, search,
+the parcel report — SSR for SEO) require no session.
+
+### Real userId replaces the dev stub; default watch seeded on first /alerts visit
+**Why:** `getSession()` now returns the Auth.js session's user id (dev stub only
+when AUTH_ENABLED=false). `ensureDefaultWatch` moved from the (system) poll route
+to the authed /alerts page, so each real user gets their council watch. The poll
+route is now a system job, gated by `CRON_SECRET` when set.
+
+---
+
 ## 2026-05-31 — "Calm civic" aesthetic (design system applied)
 
 ### Adopted the user's design guide as the source of truth
