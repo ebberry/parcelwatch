@@ -4,6 +4,46 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Zoning "what can I do here?" engine
+
+### The brief's KCC citation was stale — verified the current section (Rule #1 win)
+**Why:** The brief assumed the dimensional-standards table lived at
+**KCC 21A.12.030**. Live verification found that section was **repealed** in
+King County's 2024 reorganization (Ord. 19881); rural-area standards now live at
+**KCC 21A.09T.030**. Hardcoding the brief's citation would have pointed every
+zoning answer at a dead section — exactly the failure Operating Rule #1 prevents.
+All citations were verified against the current code + the March 2026 ADU permit
+sheet before being encoded. Verified sections: dimensions `21A.09T.030`, ADU
+`21A.08.030.B.7`, home occupation (RA) `21A.30.085`.
+
+### Scope: detailed rules for RA zones only; everything else "check with county"
+**Why:** Vashon / unincorporated KC is overwhelmingly Rural Area (RA) zoned. We
+encode verified rules for RA-2.5/5/10/20 and return an honest "check with county"
+for other zones rather than asserting unverified standards. Keeps the engine
+correct-by-construction and avoids inventing rules we haven't verified.
+
+### Lot-size-aware verdicts, but humble ones
+**Why:** We use the parcel's acreage (live county data) to make ADU and
+subdivision verdicts concrete (e.g. "your ~1.01-ac lot is below the ~1.875-ac
+minimum"). But subdivision never returns "likely yes" — it caps at "conditional"
+because clustering, critical areas, access, and water/septic always require
+county review. Verdicts degrade to "check with county" when acreage is missing.
+
+### Dropped the raw base-density (du/ac) figures from the UI
+**Why:** The verified base densities are counterintuitive (RA-2.5 and RA-5 both
+0.2 du/ac, with RA-2.5's higher density only reachable via TDR) and easy to
+misread. We drive subdivision logic off the **minimum lot area** instead (values
+that form a clean, self-consistent 0.75× pattern across zones — a good sign they
+were read correctly) and never show a number we're unsure of.
+
+### Zoning analysis is provenance "confirmed" (computed from code)
+**Why:** Like the tax calendar, verdicts are computed from statute/code, not
+fetched — confidence "confirmed", source "Computed from King County Code (Title
+21A)". The disclaimer ("not a legal determination, confirm with County
+Permitting") is rendered on every analysis.
+
+---
+
 ## 2026-05-31 — Slice 2: tax & assessment
 
 ### Assessment values come from the same layer-1722 row (no new network call)

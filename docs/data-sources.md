@@ -104,9 +104,30 @@ Save a full raw response as a fixture under `/tests` when building the adapter.
 - **Bulk assessor roll** (full sale history / authoritative roll) — still a
   later scheduled-ingest task; the GIS layer is the live snapshot for now.
 
+## Zoning engine — King County Code (verified 2026-05-31)
+
+⚠️ **The 2024 reorganization (Ord. 19881) repealed KCC 21A.12.030.** Rural-area
+dimensional standards moved to **KCC 21A.09T.030**. Verified against the current
+clerk code + the March 2026 ADU permit sheet. Cite the current sections:
+
+| Topic | Current KCC section | Verified values (RA zones) |
+| --- | --- | --- |
+| Density / dimensions | **21A.09T.030** | min lot 1.875 / 3.75 / 7.5 / 15 ac (RA-2.5/5/10/20); base height 40 ft; street setback 30 ft; interior 5 ft (RA-2.5) / 10 ft |
+| Accessory dwelling unit | **21A.08.030.B.7** | 1 ADU/lot rural; detached only if lot ≥ min lot area; ≤1,000 sf heated + 1,000 sf unheated; prohibited in Forest (F) zone; notice on title |
+| Home occupation (RA) | **21A.30.085** | ≤20% of home floor area; ≤3 on-site non-resident employees; limited hours |
+| Home occupation (R/UR) | 21A.30.080 | (urban — not yet encoded) |
+
+- Engine scope: **RA zones only**; other zones return "check with county."
+- Base density (du/ac) figures intentionally NOT shown (counterintuitive; we use
+  min lot area for subdivision logic instead). See `/lib/zoning`.
+- **Still unverified:** R (urban residential) zone height/setbacks (separate
+  geography chapter); zoning layer 450 field names (for authoritative-zoning
+  cross-check vs the Assessor's `KCA_ZONING`).
+
 ## To verify before later slices
 
-- [ ] Zoning layer 450 field names (Phase 2 zoning engine).
+- [ ] Urban R-zone dimensional standards (when extending the zoning engine).
+- [ ] Zoning layer 450 field names (authoritative-zoning cross-check).
 - [ ] King County Assessor bulk roll — periodic download for full sale history.
 - [ ] FEMA NFHL, USGS, EPA Envirofacts, WA Ecology/DOH (Slice 3).
 - [ ] US Census Geocoder + ACS, NWS, WSDOT (Slice 4).

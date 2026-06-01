@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getParcelCore } from "@/lib/parcels/service";
 import { getTaxCalendar } from "@/lib/tax/service";
+import { getZoningAnalysis } from "@/lib/zoning/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { ReportPanel, Field } from "@/components/ReportPanel";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
+import { ZoningPanel } from "@/components/ZoningPanel";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
-import { ZONING_DISCLAIMER } from "@/lib/zoning";
 
 export async function generateMetadata({
   params,
@@ -48,6 +49,7 @@ export default async function ParcelPage({
   const p = sv.value;
   const assessment = p?.assessment ?? null;
   const taxCalendar = getTaxCalendar();
+  const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-10">
@@ -128,12 +130,9 @@ export default async function ParcelPage({
 
             <ReportPanel title="Zoning" sourced={sv}>
               <Field label="Zoning code" value={p.zoningCode} />
-              <p className="pt-3 text-xs text-gray-500">
-                Plain-language answers to “what can I build here?” (ADU,
-                subdivision, setbacks) arrive with the zoning engine in a later
-                release. {ZONING_DISCLAIMER}
-              </p>
             </ReportPanel>
+
+            <ZoningPanel sourced={zoning} />
 
             <TaxDeadlines sourced={taxCalendar} />
 
