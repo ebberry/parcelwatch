@@ -1,6 +1,7 @@
 # Caddy auto-provisions and renews a free Let's Encrypt cert for {$DOMAIN}.
-# Requires: DNS A record pointing {$DOMAIN} at the Lightsail static IP, and
-# ports 80 + 443 open in the Lightsail firewall.
+# Requires: {$DOMAIN} resolves to the Lightsail static IP (a real domain's A
+# record, OR an <ip>.sslip.io name which needs no DNS setup), and ports 80 + 443
+# open in the Lightsail firewall.
 {$DOMAIN} {
 	encode zstd gzip
 	reverse_proxy web:3000
