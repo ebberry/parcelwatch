@@ -30,11 +30,11 @@ export default function Home() {
 
       <div className="mt-6 flex justify-end">
         <Link
-          href="/alerts"
+          href="/dashboard"
           className="inline-flex items-center gap-1.5 text-sm text-pw-sub hover:text-pw-green"
         >
           <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-          View alerts
+          My dashboard
         </Link>
       </div>
 

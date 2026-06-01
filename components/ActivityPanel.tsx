@@ -1,4 +1,4 @@
-import { Landmark, Sparkles } from "lucide-react";
+import { Landmark, Sparkles, ExternalLink } from "lucide-react";
 import { Panel, QuietNote, StatusPill } from "@/components/Panel";
 import { topicLabel } from "@/lib/watches";
 import type { SourcedValue } from "@/lib/provenance";
@@ -42,17 +42,26 @@ export function ActivityPanel({ sourced }: { sourced: SourcedValue<CivicFeedItem
         <ul className="divide-y-[0.5px] divide-pw-divider">
           {items.map((it) => {
             const pill = it.insight ? RELEVANCE_PILL[it.insight.relevance] : undefined;
+            // With an AI summary, lead with the plain-language headline and link
+            // to the source compactly (file ref); the long legal title is the
+            // fallback only when there's no summary.
+            const fileMatch = it.title.match(/^([A-Za-z]+[\s-]?[\d-]+):/);
+            const fileRef = fileMatch ? fileMatch[1] : "View source";
             return (
               <li key={it.externalId} className="py-3">
                 <div className="flex items-baseline justify-between gap-3">
-                  <a
-                    href={it.url ?? "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-medium text-pw-ink hover:text-pw-green hover:underline"
-                  >
-                    {it.title}
-                  </a>
+                  {it.insight ? (
+                    <p className="font-medium text-pw-ink">{it.insight.summary}</p>
+                  ) : (
+                    <a
+                      href={it.url ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-pw-ink hover:text-pw-green hover:underline"
+                    >
+                      {it.title}
+                    </a>
+                  )}
                   {it.date && (
                     <span className="shrink-0 text-xs tabular-nums text-pw-faint">
                       {shortDate(it.date)}
@@ -60,20 +69,18 @@ export function ActivityPanel({ sourced }: { sourced: SourcedValue<CivicFeedItem
                   )}
                 </div>
 
-                <p className="mt-0.5 text-xs text-pw-faint">{it.source}</p>
-
                 {it.insight ? (
-                  <>
-                    <p className="mt-1 text-sm text-pw-ink">{it.insight.summary}</p>
-                    {it.insight.whyItMatters && (
-                      <p className="mt-1 text-sm text-pw-sub">
-                        <span className="font-medium text-pw-ink">Why it matters: </span>
-                        {it.insight.whyItMatters}
-                      </p>
-                    )}
-                  </>
+                  it.insight.whyItMatters && (
+                    <p className="mt-1 text-sm text-pw-sub">
+                      <span className="font-medium text-pw-ink">Why it matters: </span>
+                      {it.insight.whyItMatters}
+                    </p>
+                  )
                 ) : (
-                  it.detail && <p className="mt-0.5 text-sm text-pw-sub">{it.detail}</p>
+                  <>
+                    <p className="mt-0.5 text-xs text-pw-faint">{it.source}</p>
+                    {it.detail && <p className="mt-0.5 text-sm text-pw-sub">{it.detail}</p>}
+                  </>
                 )}
 
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -87,9 +94,19 @@ export function ActivityPanel({ sourced }: { sourced: SourcedValue<CivicFeedItem
                     </span>
                   ))}
                   {it.insight && (
+                    <a
+                      href={it.url ?? "#"}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-pw-green hover:underline"
+                    >
+                      {fileRef} <ExternalLink className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
+                    </a>
+                  )}
+                  {it.insight && (
                     <span className="ml-auto inline-flex items-center gap-1 text-xs text-pw-faint">
                       <Sparkles className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
-                      AI summary
+                      AI · {it.source.replace(/ \(Legistar\)$/, "")}
                     </span>
                   )}
                 </div>
