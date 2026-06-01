@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
+  Bell,
   ChevronLeft,
   Home,
   Landmark,
@@ -83,13 +84,22 @@ export default async function ParcelPage({
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1 text-sm text-pw-green hover:underline"
-      >
-        <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-        New search
-      </Link>
+      <div className="flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-sm text-pw-green hover:underline"
+        >
+          <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          New search
+        </Link>
+        <Link
+          href="/alerts"
+          className="inline-flex items-center gap-1.5 text-sm text-pw-sub hover:text-pw-green"
+        >
+          <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          Alerts
+        </Link>
+      </div>
 
       {!p ? (
         <section className="mt-6 rounded-xl border-[0.5px] border-pw-amber/40 bg-[#FBF4E8] p-5">

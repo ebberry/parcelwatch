@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { Bell } from "lucide-react";
 import { ParcelSearch } from "@/components/ParcelSearch";
 import { BrandMark } from "@/components/BrandMark";
 
@@ -26,7 +28,17 @@ export default function Home() {
         <ParcelSearch />
       </section>
 
-      <footer className="mt-12 border-t-[0.5px] border-pw-divider pt-6 text-xs text-pw-faint">
+      <div className="mt-6 flex justify-end">
+        <Link
+          href="/alerts"
+          className="inline-flex items-center gap-1.5 text-sm text-pw-sub hover:text-pw-green"
+        >
+          <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+          View alerts
+        </Link>
+      </div>
+
+      <footer className="mt-6 border-t-[0.5px] border-pw-divider pt-6 text-xs text-pw-faint">
         We display property &amp; built-environment data only — never information
         keyed to individuals by name. Data sourced live from King County.
       </footer>

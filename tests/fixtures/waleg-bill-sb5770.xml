@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ArrayOfLegislation xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://WSLWebServices.leg.wa.gov/">
+  <Legislation>
+    <Biennium>2025-26</Biennium>
+    <BillId>SB 5770</BillId>
+    <BillNumber>5770</BillNumber>
+    <SubstituteVersion>0</SubstituteVersion>
+    <EngrossedVersion>0</EngrossedVersion>
+    <ShortLegislationType>
+      <ShortLegislationType>B</ShortLegislationType>
+      <LongLegislationType>Bill</LongLegislationType>
+    </ShortLegislationType>
+    <OriginalAgency>Senate</OriginalAgency>
+    <Active>true</Active>
+    <StateFiscalNote>true</StateFiscalNote>
+    <LocalFiscalNote>true</LocalFiscalNote>
+    <Appropriations>false</Appropriations>
+    <RequestedByGovernor>false</RequestedByGovernor>
+    <RequestedByBudgetCommittee>false</RequestedByBudgetCommittee>
+    <RequestedByDepartment>false</RequestedByDepartment>
+    <RequestedByOther>false</RequestedByOther>
+    <ShortDescription>Primary residence/tax</ShortDescription>
+    <Request>S-0805.5</Request>
+    <IntroducedDate>2025-02-21T00:00:00</IntroducedDate>
+    <CurrentStatus>
+      <BillId>SB 5770</BillId>
+      <HistoryLine>By resolution, reintroduced and retained in present status.</HistoryLine>
+      <ActionDate>2026-01-12T00:00:00</ActionDate>
+      <AmendedByOppositeBody>false</AmendedByOppositeBody>
+      <PartialVeto>false</PartialVeto>
+      <Veto>false</Veto>
+      <AmendmentsExist>false</AmendmentsExist>
+      <Status>S Rules X</Status>
+    </CurrentStatus>
+    <Sponsor>(Robinson)</Sponsor>
+    <PrimeSponsorID>18265</PrimeSponsorID>
+    <LongDescription>Providing housing safety, security, and protection by creating the primary residence property tax exemption.</LongDescription>
+    <LegalTitle>AN ACT Relating to providing housing safety, security, and protection by creating the primary residence property tax exemption;</LegalTitle>
+    <Companions>
+      <Companion>
+        <Biennium>2025-26</Biennium>
+        <BillId>HB 2024</BillId>
+        <Status>HFinance</Status>
+      </Companion>
+    </Companions>
+  </Legislation>
+  <Legislation>
+    <Biennium>2025-26</Biennium>
+    <BillId>SSB 5770</BillId>
+    <BillNumber>5770</BillNumber>
+    <SubstituteVersion>1</SubstituteVersion>
+    <EngrossedVersion>0</EngrossedVersion>
+    <ShortLegislationType>
+      <ShortLegislationType>B</ShortLegislationType>
+      <LongLegislationType>Bill</LongLegislationType>
+    </ShortLegislationType>
+    <OriginalAgency>Senate</OriginalAgency>
+    <Active>true</Active>
+    <StateFiscalNote>true</StateFiscalNote>
+    <LocalFiscalNote>true</LocalFiscalNote>
+    <Appropriations>false</Appropriations>
+    <RequestedByGovernor>false</RequestedByGovernor>
+    <RequestedByBudgetCommittee>false</RequestedByBudgetCommittee>
+    <RequestedByDepartment>false</RequestedByDepartment>
+    <RequestedByOther>false</RequestedByOther>
+    <ShortDescription>Primary residence/tax</ShortDescription>
+    <Request>S-1936.2</Request>
+    <IntroducedDate>2025-02-27T00:00:00</IntroducedDate>
+    <CurrentStatus>
+      <BillId>SSB 5770</BillId>
+      <HistoryLine>By resolution, reintroduced and retained in present status.</HistoryLine>
+      <ActionDate>2026-01-12T00:00:00</ActionDate>
+      <AmendedByOppositeBody>false</AmendedByOppositeBody>
+      <PartialVeto>false</PartialVeto>
+      <Veto>false</Veto>
+      <AmendmentsExist>false</AmendmentsExist>
+      <Status>S Rules X</Status>
+    </CurrentStatus>
+    <Sponsor>WM(Robinson)</Sponsor>
+    <PrimeSponsorID>18265</PrimeSponsorID>
+    <LongDescription>Providing housing safety, security, and protection by creating the primary residence property tax exemption.</LongDescription>
+    <LegalTitle>AN ACT Relating to providing housing safety, security, and protection by creating the primary residence property tax exemption;</LegalTitle>
+    <Companions />
+  </Legislation>
+</ArrayOfLegislation>

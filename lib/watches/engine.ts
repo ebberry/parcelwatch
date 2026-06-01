@@ -2,19 +2,22 @@ import { and, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { watches, watchSeen, alerts } from "@/db/schema";
 import { fetchCouncilItems } from "./sources/council";
+import { fetchNewBills, normalizeLegislature, sinceDate } from "./sources/legislature";
 import type { WatchItem, WatchKind } from "./index";
 
 export const SOURCE_LABEL: Record<WatchKind, string> = {
   council: "King County Council (Legistar)",
-  legislature: "WA Legislature",
+  legislature: "WA Legislature web services",
 };
 
 async function fetchItems(kind: WatchKind): Promise<WatchItem[]> {
   switch (kind) {
     case "council":
       return fetchCouncilItems();
-    default:
-      return [];
+    case "legislature": {
+      const bills = await fetchNewBills(sinceDate());
+      return normalizeLegislature(bills);
+    }
   }
 }
 
@@ -90,7 +93,7 @@ export async function runWatchPoll(kind: WatchKind): Promise<PollResult> {
 
 /** Run all watch kinds. */
 export async function runAllWatches(): Promise<PollResult[]> {
-  const kinds: WatchKind[] = ["council"];
+  const kinds: WatchKind[] = ["council", "legislature"];
   const results: PollResult[] = [];
   for (const kind of kinds) results.push(await runWatchPoll(kind));
   return results;
