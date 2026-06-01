@@ -23,12 +23,20 @@ export interface AppealReason {
 
 export const APPEAL_REASONS: AppealReason[] = [
   { key: "market", label: "Assessed value is higher than recent comparable sales" },
-  { key: "uniformity", label: "Assessment is higher than comparable nearby properties" },
+  { key: "uniformity", label: "Assessed at a higher share of value than comparable nearby homes (equity)" },
   { key: "purchase", label: "A recent purchase price was lower than the assessed value" },
-  { key: "condition", label: "Property condition issues reduce its value" },
-  { key: "errors", label: "Factual errors in the county's property record" },
+  { key: "condition", label: "Damage, defects, or deferred maintenance reduce its value" },
+  { key: "errors", label: "The county's record has errors (square footage, beds/baths, year, condition)" },
+  { key: "site", label: "Site problems (easement, erosion/landslide, wetland, access, failing septic)" },
+  { key: "use", label: "Unpermitted work, functional problems, or restrictions on use" },
   { key: "other", label: "Other reason (explain below)" },
 ];
+
+/**
+ * Owner-known factors we can't detect from data but that are valid appeal
+ * grounds — shown so people consider them. Checking any is a colorable basis.
+ */
+export const OWNER_FACTOR_KEYS = ["condition", "errors", "site", "use"] as const;
 
 const usd = (n: number) => `$${Math.round(n).toLocaleString("en-US")}`;
 
@@ -122,12 +130,42 @@ export function buildRecentPurchaseNarrative(sale: SaleCompSet): string | null {
   );
 }
 
+/** Minimum ratio gap (percentage points) to assert an equity/uniformity case. */
+const EQUITY_GAP_PTS = 5;
+
+/**
+ * Equity / uniformity "grounds" paragraph based on the assessment-to-sale RATIO
+ * — valid even when the home is assessed below its sale price. If the subject is
+ * assessed at a higher share of its value than comparable homes are of theirs,
+ * the assessment is not uniform (WA Const. art. VII §1; RCW 84.40.0301). Returns
+ * null unless the subject sold recently AND its ratio is materially worse.
+ */
+export function buildEquityNarrative(sale: SaleCompSet): string | null {
+  const subj = sale.subjectAssessedToSalePct;
+  const peers = sale.medianAssessedToSalePct;
+  if (
+    subj == null ||
+    peers == null ||
+    subj - peers < EQUITY_GAP_PTS ||
+    sale.subjectSale == null ||
+    sale.comps.length === 0
+  ) {
+    return null;
+  }
+  const equitableValue = Math.round(((peers / 100) * sale.subjectSale.salePrice) / 1000) * 1000;
+  return (
+    `Although this property is assessed below its recent sale price, it is assessed at about ${subj}% of that price, while ${sale.comps.length} comparable nearby homes are assessed at a median of about ${peers}% of their sale prices. ` +
+    `Washington requires assessments to be uniform and equitable across similar properties (WA Const. art. VII §1; RCW 84.40.0301); this property is carrying a higher assessment ratio than its neighbors. ` +
+    `Bringing it to the neighborhood ratio implies a value of about ${usd(equitableValue)}, which supports a reduction on equity grounds.`
+  );
+}
+
 /**
  * Assemble the default, editable explanation from whatever evidence is
- * available, strongest argument first (recent purchase → market sales →
- * uniformity), and the appeal-reason checkboxes those arguments imply. We never
- * include a claim the data doesn't support; an empty result means "owner writes
- * their own grounds".
+ * available, strongest argument first (recent purchase → market sales → equity
+ * ratio → per-lot-sqft uniformity), and the appeal-reason checkboxes those
+ * arguments imply. We never include a claim the data doesn't support; an empty
+ * result means "owner writes their own grounds".
  */
 export function buildAppealNarrative(input: {
   comp: CompSet | null;
@@ -146,10 +184,15 @@ export function buildAppealNarrative(input: {
     parts.push(market);
     reasons.push("market");
   }
+  const equity = input.sale ? buildEquityNarrative(input.sale) : null;
+  if (equity) {
+    parts.push(equity);
+    if (!reasons.includes("uniformity")) reasons.push("uniformity");
+  }
   const uniformity = input.comp ? buildUniformityNarrative(input.comp) : null;
   if (uniformity) {
     parts.push(uniformity);
-    reasons.push("uniformity");
+    if (!reasons.includes("uniformity")) reasons.push("uniformity");
   }
 
   return { text: parts.length ? parts.join("\n\n") : null, reasons };
@@ -163,7 +206,7 @@ export type AppealStrength = "strong" | "moderate" | "weak" | "none";
 
 /** One real, cited data point that indicates value (never a model output). */
 export interface ValueIndicator {
-  key: "purchase" | "sales" | "uniformity";
+  key: "purchase" | "sales" | "equity" | "uniformity";
   label: string;
   value: number;
 }
@@ -191,6 +234,7 @@ const CAVEATS = [
   "These figures use recorded sales and county assessments, not a formal appraisal — you choose the value to request.",
   "Comparable sales are not adjusted for building size or condition.",
   "Sale dates and the assessment date may differ.",
+  "Filing is free and low-risk, but not risk-free: the Board can sustain, lower, or — rarely — raise the value.",
 ];
 
 const roundTo1k = (n: number) => Math.round(n / 1000) * 1000;
@@ -227,6 +271,26 @@ export function buildRecommendation(input: {
       value: salesMedian,
     });
   }
+  // Equity / uniformity by assessment-to-sale RATIO — valid even when assessed
+  // below the sale price. Target = bring the subject to the neighborhood ratio.
+  const subjRatio = input.sale?.subjectAssessedToSalePct ?? null;
+  const peerRatio = input.sale?.medianAssessedToSalePct ?? null;
+  const equityGapPts =
+    subjRatio != null && peerRatio != null ? subjRatio - peerRatio : null;
+  if (
+    input.sale?.subjectSale &&
+    peerRatio != null &&
+    equityGapPts != null &&
+    equityGapPts >= 5 &&
+    nComps > 0
+  ) {
+    const equityValue = Math.round(((peerRatio / 100) * input.sale.subjectSale.salePrice) / 1000) * 1000;
+    indicators.push({
+      key: "equity",
+      label: `the neighborhood assessment ratio (peers ≈ ${peerRatio}% of sale vs this home ${subjRatio}%)`,
+      value: equityValue,
+    });
+  }
   const uniformityImplied =
     input.comp?.medianPerLotSqFt != null && input.comp.subject.lotSqFt != null
       ? input.comp.medianPerLotSqFt * input.comp.subject.lotSqFt
@@ -254,18 +318,29 @@ export function buildRecommendation(input: {
   };
   if (assessed == null || assessed <= 0 || !indicators.length) return base;
 
-  // Anchor on the strongest available indicator — never an average of them.
-  const primary =
-    indicators.find((i) => i.key === "purchase") ??
-    indicators.find((i) => i.key === "sales") ??
-    indicators[0];
+  // Only indicators BELOW the assessed value point to a reduction. Anchor on the
+  // strongest of those, by priority — never an average (that would be an AVM).
+  const PRIORITY: Record<ValueIndicator["key"], number> = {
+    purchase: 0,
+    equity: 1,
+    sales: 2,
+    uniformity: 3,
+  };
+  const reductionCandidates = indicators
+    .filter((i) => i.value < assessed)
+    .sort((a, b) => PRIORITY[a.key] - PRIORITY[b.key]);
+  const primary = reductionCandidates[0] ?? null;
+
+  if (!primary) {
+    return { ...base, recommendedValue: roundTo1k(indicators[0].value) };
+  }
 
   const recommendedValue = roundTo1k(primary.value);
   const reductionAmount = assessed - recommendedValue;
   const reductionPct = Math.round((reductionAmount / assessed) * 100);
   const shouldAppeal = reductionAmount > 0 && reductionPct >= 5;
 
-  const below = indicators.map((i) => i.value).filter((v) => v < assessed);
+  const below = reductionCandidates.map((i) => i.value);
   const rangeLow = below.length ? roundTo1k(Math.min(...below)) : null;
   const rangeHigh = below.length ? roundTo1k(Math.max(...below)) : null;
 
@@ -276,6 +351,8 @@ export function buildRecommendation(input: {
       (primary.key === "purchase" && reductionPct >= 10) ||
       (primary.key === "sales" && nComps >= 5 && reductionPct >= 15)
     ) {
+      // A pure equity/ratio argument tops out at "moderate" — the Board may read
+      // the subject's sale as below-market rather than the assessment as high.
       strength = "strong";
     } else if (reductionPct >= 10 || corroborating >= 2) {
       strength = "moderate";

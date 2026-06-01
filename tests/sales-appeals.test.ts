@@ -255,6 +255,67 @@ describe("buildRecommendation", () => {
     expect(rec.strength).toBe("none");
   });
 
+  // In production the assessed total passed to buildRecommendation is the SAME
+  // p.assessment.appraisedTotal that buildSaleCompSet uses, so the subject ratio
+  // is internally consistent. These helpers mirror that.
+  const subjectAssessed = (total: number): ParcelCore => {
+    const s = subject();
+    return { ...s, assessment: { ...s.assessment!, appraisedTotal: total } };
+  };
+
+  it("recommends an equity appeal when the ratio is worse than neighbors, even though assessed < sale price", () => {
+    // Subject assessed $760k, sold $900k (84% ratio). Neighbors assessed ~70%.
+    const subj = subjectAssessed(760000);
+    const set = buildSaleCompSet(
+      subj,
+      [
+        sale("a", 1000000, "2025-08-13"),
+        sale("b", 1000000, "2025-06-10"),
+        sale("c", 1000000, "2024-11-02"),
+      ],
+      [sale("0000000001", 900000, "2025-05-01")],
+      vals([
+        ["a", 700000], // 70%
+        ["b", 700000], // 70%
+        ["c", 700000], // 70%
+      ]),
+    );
+    expect(set.subjectAssessedToSalePct).toBe(84);
+    expect(set.medianAssessedToSalePct).toBe(70);
+    // No value case: assessed $760k is below every sale price.
+    const rec = buildRecommendation({ assessedTotal: 760000, sale: set, comp: null });
+    expect(rec.shouldAppeal).toBe(true);
+    expect(rec.indicators.find((i) => i.key === "equity")).toBeDefined();
+    // 70% of the $900k sale ≈ $630k — the equitable target, below assessed.
+    expect(rec.recommendedValue).toBe(630000);
+    expect(rec.basis).toMatch(/neighborhood assessment ratio/);
+    // Pure equity/ratio case tops out at "moderate" (17% reduction → moderate).
+    expect(rec.strength).toBe("moderate");
+
+    const text = buildAppealNarrative({ comp: null, sale: set }).text ?? "";
+    expect(text).toMatch(/assessed below its recent sale price/);
+    expect(text).toMatch(/uniform and equitable/);
+  });
+
+  it("does not assert an equity case when the subject ratio matches neighbors", () => {
+    // Subject assessed $680k, sold $1,000k → 68% ratio; peers also 68%.
+    const subj = subjectAssessed(680000);
+    const set = buildSaleCompSet(
+      subj,
+      [sale("a", 1000000, "2025-08-13"), sale("b", 1000000, "2025-06-10")],
+      [sale("0000000001", 1000000, "2025-05-01")],
+      vals([
+        ["a", 680000], // 68%
+        ["b", 680000], // 68%
+      ]),
+    );
+    expect(set.subjectAssessedToSalePct).toBe(68);
+    expect(set.medianAssessedToSalePct).toBe(68);
+    const rec = buildRecommendation({ assessedTotal: 680000, sale: set, comp: null });
+    expect(rec.indicators.find((i) => i.key === "equity")).toBeUndefined();
+    expect(rec.shouldAppeal).toBe(false);
+  });
+
   it("writes a first-person request sentence only when an appeal is recommended", () => {
     const set = buildSaleCompSet(
       subject(),

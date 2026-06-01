@@ -58,6 +58,8 @@ export interface SaleCompSet {
   /** Median assessed-to-sale ratio across comps, as % (the county "ratio study"). */
   medianAssessedToSalePct: number | null;
   subjectAssessedTotal: number | null;
+  /** Subject's OWN assessed-to-sale ratio, as % — only when it sold recently. */
+  subjectAssessedToSalePct: number | null;
   /** Subject assessed vs comparable median sale, as % (+ = assessed above market). */
   assessedVsMedianSalePct: number | null;
   /** Heuristic: assessed value materially exceeds comparable sale prices. */
@@ -198,6 +200,10 @@ export function buildSaleCompSet(
     medianAssessedTotal: medianAssessed,
     medianAssessedToSalePct: medianRatio,
     subjectAssessedTotal: assessed,
+    subjectAssessedToSalePct:
+      assessed != null && ownSale?.salePrice
+        ? Math.round((assessed / ownSale.salePrice) * 100)
+        : null,
     assessedVsMedianSalePct: vsPct,
     appearsHigh: vsPct != null && vsPct >= MATERIAL_PCT,
     subjectSale,

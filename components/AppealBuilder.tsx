@@ -144,14 +144,19 @@ export function AppealBuilder({
         ) : (
           <>
             <p className="text-sm text-pw-sub">
-              The assessed value of{" "}
+              On the sales and ratio data, the assessed value of{" "}
               <span className="font-medium text-pw-ink">{usd(rec.currentAssessed)}</span>{" "}
-              appears broadly in line with the available evidence
+              looks fair and roughly uniform with nearby homes
               {rec.recommendedValue != null && rec.reductionPct != null && (
                 <> (nearest indicator ≈ {usd(rec.recommendedValue)}, about {Math.abs(rec.reductionPct)}% away)</>
               )}
-              , so a reduction may be hard to support. You can still file an appeal if you
-              have evidence we don&apos;t — recent damage, a lower appraisal, or record errors.
+              .
+            </p>
+            <p className="mt-2 text-sm text-pw-sub">
+              That doesn&apos;t mean you can&apos;t appeal. Filing is free and low-risk, and
+              you may have grounds the data can&apos;t see — <span className="text-pw-ink">damage
+              or deferred maintenance, errors in the county&apos;s record, site or access
+              problems, or a lower appraisal</span>. If any apply, check them below and file.
             </p>
           </>
         )}
@@ -376,6 +381,10 @@ export function AppealBuilder({
 
         <fieldset className="text-sm">
           <legend className="mb-1 text-pw-sub">Reasons for the appeal</legend>
+          <p className="mb-2 text-xs text-pw-faint">
+            We&apos;ve checked the boxes the data supports. Add any others only you
+            would know — each is a valid, independent ground for an appeal.
+          </p>
           <div className="flex flex-col gap-2">
             {APPEAL_REASONS.map((r) => (
               <label key={r.key} className="flex items-start gap-2">
@@ -556,6 +565,12 @@ export function AppealBuilder({
 
       {/* Actions + hand-off */}
       <div className="no-print mt-6 flex flex-col gap-3">
+        {reasons.size > 0 && (
+          <p className="rounded-lg border-[0.5px] border-pw-green/40 bg-pw-accent/10 px-3 py-2 text-sm text-pw-ink">
+            You&apos;ve indicated {reasons.size} ground{reasons.size === 1 ? "" : "s"} for
+            an appeal. Filing is free — print your petition and submit it below.
+          </p>
+        )}
         <button
           type="button"
           onClick={() => window.print()}

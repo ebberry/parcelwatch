@@ -190,12 +190,24 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
     prices $495k–$915k, dates 2022–2025.
 - 🎯 **Recommendation engine (`buildRecommendation`, 2026-06-01):** turns the
   evidence into a concrete value to request. Anchors on ONE real, cited
-  indicator — strongest first: the owner's recent purchase → comparable-sales
-  median → per-lot-sqft assessment screen — and never blends them into a
-  synthetic AVM. Only recommends appealing when assessed exceeds the indicator
-  by ≥5%; otherwise says so plainly (verified live: a Vashon parcel assessed
-  $301k that sold for $585k correctly returns "no appeal"). Prefills the
-  petition's opinion-of-value + a first-person request sentence.
+  indicator — strongest first: recent purchase → **equity/ratio uniformity** →
+  comparable-sales median → per-lot-sqft screen — and never blends them into a
+  synthetic AVM. Prefills the petition's opinion-of-value + a first-person
+  request sentence.
+- ⚖️ **Equity / ratio uniformity (2026-06-01):** a valid appeal **even when the
+  home is assessed below its sale price**. Using the per-comp sale+assessment
+  join, we compute the subject's assessment-to-sale ratio vs the neighborhood
+  median ratio; a gap ≥5 pts implies an inequitable assessment (WA Const. art.
+  VII §1; RCW 84.40.0301), with an equitable target = neighborhood ratio ×
+  subject sale price. Capped at "moderate" strength (the Board may read the sale
+  as below-market). Verified live: parcel 0221029065 (sold $900k, assessed $760k
+  = 84% vs neighbors 69%) → recommend reducing to ≈ $621k on equity grounds.
+- 🧭 **Stance (encourage broadly, never fabricate):** the tool surfaces every
+  colorable basis — value, equity, and owner-known factors (damage, county-record
+  errors, site/access problems, unpermitted/functional issues) — and encourages
+  filing wherever one exists (it's free and low-risk). It will NOT manufacture a
+  case where none exists, and it always discloses that the Board can sustain,
+  lower, or rarely raise the value. See `lib/appeals` `OWNER_FACTOR_KEYS`.
 - 📋 **Living-area ($/sqft) comps — proposed, not built:** the one missing
   dimension is building size (no keyless live sqft feed). Spec for ingesting the
   Assessor bulk extracts (`EXTR_ResBldg`/`EXTR_RPSale`) lives in
