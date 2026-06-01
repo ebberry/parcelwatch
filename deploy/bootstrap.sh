@@ -145,13 +145,18 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 3. Build + launch + migrate
+# 3. Build → migrate → launch  (ORDER MATTERS: create the tables BEFORE the
+#    worker/web start, so the worker's first poll doesn't hit missing tables)
 # ---------------------------------------------------------------------------
-say "Building images and starting the stack (first build takes a few minutes)..."
-$COMPOSE up -d --build
+say "Building the app image (first build takes a few minutes)..."
+$COMPOSE build
 
-say "Creating the database tables..."
+say "Starting the database and creating the tables..."
+$COMPOSE up -d db redis
 $COMPOSE run --rm web npx drizzle-kit push --force
+
+say "Starting the web app, worker, and HTTPS proxy..."
+$COMPOSE up -d
 
 DOMAIN_OUT="$(grep '^DOMAIN=' "$ENVF" | cut -d= -f2-)"
 say "Launched. Caddy is fetching an HTTPS cert (give it ~30s)."
