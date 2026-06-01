@@ -58,7 +58,7 @@ export default async function SignInPage({
             const email = String(formData.get("email") ?? "").trim();
             await signIn("nodemailer", {
               email,
-              redirectTo: callbackUrl ?? "/alerts",
+              redirectTo: callbackUrl ?? "/dashboard",
             });
           }}
           className="rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5"

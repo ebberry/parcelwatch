@@ -121,11 +121,11 @@ export default async function ParcelPage({
           New search
         </Link>
         <Link
-          href="/alerts"
+          href="/dashboard"
           className="inline-flex items-center gap-1.5 text-sm text-pw-sub hover:text-pw-green"
         >
           <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-          Alerts
+          My dashboard
         </Link>
       </div>
 

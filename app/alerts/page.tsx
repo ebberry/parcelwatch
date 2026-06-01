@@ -36,11 +36,11 @@ export default async function AlertsPage() {
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
       <div className="flex items-center justify-between">
         <Link
-          href="/"
+          href="/dashboard"
           className="inline-flex items-center gap-1 text-sm text-pw-green hover:underline"
         >
           <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-          Home
+          Dashboard
         </Link>
         <form
           action={async () => {

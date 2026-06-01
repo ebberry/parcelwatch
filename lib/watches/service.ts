@@ -162,6 +162,34 @@ export async function getActiveWatchKinds(
   return active;
 }
 
+/** A property the user has saved (watched), with which kinds are active. */
+export interface WatchedParcel {
+  parcelId: string;
+  activeKinds: string[];
+}
+
+/** The distinct parcels a user has active watches on — their saved addresses. */
+export async function getWatchedParcels(userId: string): Promise<WatchedParcel[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ parcelId: watches.parcelId, kind: watches.kind, createdAt: watches.createdAt })
+    .from(watches)
+    .where(and(eq(watches.userId, userId), eq(watches.active, true), isNotNull(watches.parcelId)))
+    .orderBy(watches.createdAt);
+
+  const byParcel = new Map<string, Set<string>>();
+  for (const r of rows) {
+    if (!r.parcelId) continue;
+    const set = byParcel.get(r.parcelId) ?? new Set<string>();
+    set.add(r.kind);
+    byParcel.set(r.parcelId, set);
+  }
+  return [...byParcel.entries()].map(([parcelId, kinds]) => ({
+    parcelId,
+    activeKinds: [...kinds],
+  }));
+}
+
 /**
  * Ensure a user has a default council watch (all topics), so polls generate
  * alerts for them. Idempotent.
