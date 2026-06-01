@@ -29,6 +29,7 @@ import { titleCaseAddress } from "@/lib/format";
 import { Panel, Field, MetricTile } from "@/components/Panel";
 import { summarizeFindings } from "@/lib/report/summary";
 import { ReportSummary } from "@/components/ReportSummary";
+import { watchThisArea } from "./actions";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
 import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
@@ -253,6 +254,25 @@ export default async function ParcelPage({
               <div id="activity" className="scroll-mt-4">
                 <ActivityPanel sourced={councilActivity} />
               </div>
+
+              <form
+                action={watchThisArea}
+                className="rounded-xl border-[0.5px] border-pw-border bg-pw-inset p-4"
+              >
+                <input type="hidden" name="parcelId" value={p.pin} />
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-pw-sub">
+                    Get an alert when the County Council acts on something near here.
+                  </p>
+                  <button
+                    type="submit"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-pw-green px-3.5 py-1.5 text-sm font-medium text-white hover:bg-pw-ink"
+                  >
+                    <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+                    Watch this area
+                  </button>
+                </div>
+              </form>
             </ReportGroup>
 
             <section
