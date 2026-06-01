@@ -4,6 +4,40 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Slice 2: tax & assessment
+
+### Assessment values come from the same layer-1722 row (no new network call)
+**Why:** Layer 1722 already returns `APPRLNDVAL`, `APPR_IMPR`, `TAX_LNDVAL`,
+`TAX_IMPR`, `LEVYCODE`, `LEVY_JURIS`, `KCTP_TAXYR`, `ACCNT_NUM`. We extended the
+parcel adapter to capture them into a nested `assessment` object rather than
+adding a second source/fetch. Verified the values match the county's eReal
+Property page exactly ($414k land + $658k improvements = $1.072M, TY 2026). The
+**bulk assessor roll** (full sale history, authoritative valuations) remains a
+later scheduled-ingest task — the GIS layer is a sufficient live snapshot for
+the value panel now.
+
+### `appraisedTotal` is computed only when both components are present
+**Why:** The layer gives land + improvement separately, not a total. Summing two
+real values is arithmetic, not invention — but if either component is missing we
+return null rather than a misleading partial total.
+
+### Tax deadlines are computed RULES (confidence "confirmed"), not a feed
+**Why:** WA due dates (Apr 30 / Oct 31, RCW 84.56.020) and the BOE appeal window
+(July 1 floor, RCW 84.40.038) are statute. `lib/tax/deadlines.ts` computes them
+purely from a reference date (unit-tested across many dates). They carry
+confidence `confirmed` with the RCW citation as the source label — demonstrating
+a second provenance type alongside live-fetched data on the same page. Date math
+is UTC date-only; a Pacific-time refinement near midnight is a noted TODO.
+
+### Live tax balance = deep-link to eReal Property, no scraping (v1)
+**Why:** There's no public API for the live bill. We deep-link to the verified
+`blue.kingcounty.com/Assessor/eRealProperty/Detail.aspx?ParcelNbr=<PIN>` record
+(which carries the balance + sale history). Privacy note: that county page shows
+owner names, but **linking to the government's authoritative page is not
+republishing** — our own UI still surfaces zero person-keyed data.
+
+---
+
 ## 2026-05-31 — Slice 1: King County parcel core
 
 ### One denormalized layer (1722) is the whole Slice 1 source

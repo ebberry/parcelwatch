@@ -39,6 +39,15 @@ const DETAIL_FIELDS = [
   "PROPTYPE",
   "LEGALDESC",
   "PRIMARY_ADDR",
+  // Slice 2 — assessment/valuation (same row, no extra request).
+  "APPRLNDVAL",
+  "APPR_IMPR",
+  "TAX_LNDVAL",
+  "TAX_IMPR",
+  "LEVYCODE",
+  "LEVY_JURIS",
+  "KCTP_TAXYR",
+  "ACCNT_NUM",
 ].join(",");
 
 const SEARCH_FIELDS = "PIN,ADDR_FULL,POSTALCTYNAME,ZIP5,LAT,LON,PRIMARY_ADDR";
@@ -65,6 +74,30 @@ export interface RawParcelAttributes {
   PROPTYPE: string | null;
   LEGALDESC: string | null;
   PRIMARY_ADDR: number | null;
+  APPRLNDVAL: number | null;
+  APPR_IMPR: number | null;
+  TAX_LNDVAL: number | null;
+  TAX_IMPR: number | null;
+  LEVYCODE: string | null;
+  LEVY_JURIS: string | null;
+  KCTP_TAXYR: number | null;
+  ACCNT_NUM: string | null;
+}
+
+/** Assessment / valuation facts (Slice 2). Dollar values are whole dollars. */
+export interface Assessment {
+  appraisedLand: number | null;
+  appraisedImprovement: number | null;
+  /** Computed land + improvement when both are present; otherwise null. */
+  appraisedTotal: number | null;
+  taxableLand: number | null;
+  taxableImprovement: number | null;
+  taxableTotal: number | null;
+  taxYear: number | null;
+  levyCode: string | null;
+  levyJurisdiction: string | null;
+  /** County tax account number — used to deep-link the official record. */
+  accountNumber: string | null;
 }
 
 /** Our clean internal shape for a parcel's core facts. */
@@ -82,6 +115,7 @@ export interface ParcelCore {
   presentUse: string | null;
   propertyType: string | null;
   legalDescription: string | null;
+  assessment: Assessment | null;
 }
 
 /** A lightweight candidate from address search (the confirm-the-parcel step). */
@@ -99,6 +133,51 @@ function cleanText(value: string | null | undefined): string | null {
   if (value == null) return null;
   const collapsed = value.replace(/\s+/g, " ").trim();
   return collapsed.length ? collapsed : null;
+}
+
+/** Sum two dollar components only when both are present — never invent a total. */
+function sumIfBoth(a: number | null, b: number | null): number | null {
+  return a != null && b != null ? a + b : null;
+}
+
+/** Build the assessment sub-shape; null when the row carries no valuation. */
+function buildAssessment(raw: RawParcelAttributes): Assessment | null {
+  const appraisedLand = raw.APPRLNDVAL ?? null;
+  const appraisedImprovement = raw.APPR_IMPR ?? null;
+  const taxableLand = raw.TAX_LNDVAL ?? null;
+  const taxableImprovement = raw.TAX_IMPR ?? null;
+  const taxYear = raw.KCTP_TAXYR ?? null;
+  const levyCode = cleanText(raw.LEVYCODE);
+  const levyJurisdiction = cleanText(raw.LEVY_JURIS);
+  const accountNumber = cleanText(raw.ACCNT_NUM);
+
+  const hasAny =
+    appraisedLand != null ||
+    appraisedImprovement != null ||
+    taxableLand != null ||
+    taxableImprovement != null ||
+    taxYear != null ||
+    levyCode != null ||
+    accountNumber != null;
+  if (!hasAny) return null;
+
+  return {
+    appraisedLand,
+    appraisedImprovement,
+    appraisedTotal: sumIfBoth(appraisedLand, appraisedImprovement),
+    taxableLand,
+    taxableImprovement,
+    taxableTotal: sumIfBoth(taxableLand, taxableImprovement),
+    taxYear,
+    levyCode,
+    levyJurisdiction,
+    accountNumber,
+  };
+}
+
+/** Deep-link to King County's official eReal Property record (verified 2026-05-31). */
+export function eRealPropertyUrl(pin: string): string {
+  return `https://blue.kingcounty.com/Assessor/eRealProperty/Detail.aspx?ParcelNbr=${encodeURIComponent(pin)}`;
 }
 
 export const kingCountyParcelAdapter: DataSourceAdapter<
@@ -144,6 +223,7 @@ export const kingCountyParcelAdapter: DataSourceAdapter<
       presentUse: cleanText(raw.PREUSE_DESC),
       propertyType: cleanText(raw.PROPTYPE),
       legalDescription: cleanText(raw.LEGALDESC),
+      assessment: buildAssessment(raw),
     };
   },
 };

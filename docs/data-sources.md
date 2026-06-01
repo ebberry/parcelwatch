@@ -86,10 +86,28 @@ Save a full raw response as a fixture under `/tests` when building the adapter.
 
 ---
 
+## Slice 2 — tax & assessment (verified 2026-05-31)
+
+- **Valuation fields** (live, from layer 1722, same row as parcel core):
+  `APPRLNDVAL`, `APPR_IMPR`, `TAX_LNDVAL`, `TAX_IMPR`, `LEVYCODE`, `LEVY_JURIS`,
+  `KCTP_TAXYR`, `ACCNT_NUM`. Confirmed sample (PIN 0121029008): land $414,000 +
+  improvements $658,000 = $1,072,000, TY 2026, levy 4045 "KING COUNTY", acct
+  012102900805. Matches the county's eReal Property page.
+- **Official record deep-link** (verified loads):
+  `https://blue.kingcounty.com/Assessor/eRealProperty/Detail.aspx?ParcelNbr=<PIN>`
+  — carries live tax bill, tax-roll history, and sales. ⚠️ This county page
+  displays owner names; we deep-link only (no scraping, no republishing).
+- **Tax-payment portal:** `https://payment.kingcounty.gov/Home/Index?app=PropertyTaxes`
+  (generic landing; not parcel-parameterized — we link via eReal Property instead).
+- **Deadlines are computed, not fetched:** Apr 30 / Oct 31 (RCW 84.56.020),
+  BOE appeal July 1 floor (RCW 84.40.038). See `lib/tax/deadlines.ts`.
+- **Bulk assessor roll** (full sale history / authoritative roll) — still a
+  later scheduled-ingest task; the GIS layer is the live snapshot for now.
+
 ## To verify before later slices
 
 - [ ] Zoning layer 450 field names (Phase 2 zoning engine).
-- [ ] King County Assessor bulk roll (Slice 2) — periodic download, not a live API.
+- [ ] King County Assessor bulk roll — periodic download for full sale history.
 - [ ] FEMA NFHL, USGS, EPA Envirofacts, WA Ecology/DOH (Slice 3).
 - [ ] US Census Geocoder + ACS, NWS, WSDOT (Slice 4).
 - [ ] King County permits layer / portal, Recorder, Council agendas, WA Legislature (Slice 5).

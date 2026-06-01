@@ -61,6 +61,17 @@ describe("kingCountyParcelAdapter.normalize (real fixture)", () => {
     expect(Object.keys(core)).not.toContain("owner");
     expect(JSON.stringify(core).toLowerCase()).not.toContain("owner");
   });
+
+  it("normalizes assessment values and computes the total", () => {
+    const a = core.assessment;
+    expect(a).not.toBeNull();
+    expect(a?.appraisedLand).toBe(414000);
+    expect(a?.appraisedImprovement).toBe(658000);
+    expect(a?.appraisedTotal).toBe(1072000); // computed land + improvement
+    expect(a?.taxYear).toBe(2026);
+    expect(a?.levyJurisdiction).toBe("KING COUNTY");
+    expect(a?.accountNumber).toBe("012102900805");
+  });
 });
 
 describe("normalize edge cases", () => {
@@ -83,12 +94,55 @@ describe("normalize edge cases", () => {
       PROPTYPE: null,
       LEGALDESC: null,
       PRIMARY_ADDR: null,
+      APPRLNDVAL: null,
+      APPR_IMPR: null,
+      TAX_LNDVAL: null,
+      TAX_IMPR: null,
+      LEVYCODE: null,
+      LEVY_JURIS: null,
+      KCTP_TAXYR: null,
+      ACCNT_NUM: null,
     };
     const core = kingCountyParcelAdapter.normalize(sparse);
     expect(core.address).toBeNull();
     expect(core.city).toBeNull();
     expect(core.lotSqFt).toBeNull();
     expect(core.zoningCode).toBeNull();
+    // No valuation fields → assessment is null, never invented.
+    expect(core.assessment).toBeNull();
+  });
+
+  it("computes appraisedTotal only when both components are present", () => {
+    const base: RawParcelAttributes = {
+      PIN: "1234567890",
+      MAJOR: null,
+      MINOR: null,
+      ADDR_FULL: null,
+      POSTALCTYNAME: null,
+      CTYNAME: null,
+      ZIP5: null,
+      LAT: null,
+      LON: null,
+      LOTSQFT: null,
+      KCA_ACRES: null,
+      KCA_ZONING: null,
+      PREUSE_CODE: null,
+      PREUSE_DESC: null,
+      PROPTYPE: null,
+      LEGALDESC: null,
+      PRIMARY_ADDR: null,
+      APPRLNDVAL: 100000,
+      APPR_IMPR: null, // missing improvement
+      TAX_LNDVAL: null,
+      TAX_IMPR: null,
+      LEVYCODE: null,
+      LEVY_JURIS: null,
+      KCTP_TAXYR: null,
+      ACCNT_NUM: null,
+    };
+    const core = kingCountyParcelAdapter.normalize(base);
+    expect(core.assessment?.appraisedLand).toBe(100000);
+    expect(core.assessment?.appraisedTotal).toBeNull(); // not invented
   });
 
   it("falls back to CTYNAME when POSTALCTYNAME is missing", () => {
@@ -110,6 +164,14 @@ describe("normalize edge cases", () => {
       PROPTYPE: null,
       LEGALDESC: null,
       PRIMARY_ADDR: null,
+      APPRLNDVAL: null,
+      APPR_IMPR: null,
+      TAX_LNDVAL: null,
+      TAX_IMPR: null,
+      LEVYCODE: null,
+      LEVY_JURIS: null,
+      KCTP_TAXYR: null,
+      ACCNT_NUM: null,
     };
     expect(kingCountyParcelAdapter.normalize(base).city).toBe("SEATTLE");
   });

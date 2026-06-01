@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getParcelCore } from "@/lib/parcels/service";
+import { getTaxCalendar } from "@/lib/tax/service";
+import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { ReportPanel, Field } from "@/components/ReportPanel";
+import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { ZONING_DISCLAIMER } from "@/lib/zoning";
 
@@ -31,6 +34,10 @@ function formatAcres(n: number | null): string | null {
   return n == null ? null : n.toFixed(2);
 }
 
+function formatUSD(n: number | null | undefined): string | null {
+  return n == null ? null : `$${n.toLocaleString("en-US")}`;
+}
+
 export default async function ParcelPage({
   params,
 }: {
@@ -39,6 +46,8 @@ export default async function ParcelPage({
   const { pin } = await params;
   const sv = await getParcelCore(pin);
   const p = sv.value;
+  const assessment = p?.assessment ?? null;
+  const taxCalendar = getTaxCalendar();
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-10">
@@ -85,6 +94,29 @@ export default async function ParcelPage({
               <Field label="Legal description" value={p.legalDescription} />
             </ReportPanel>
 
+            <ReportPanel title="Assessed value" sourced={sv}>
+              <Field
+                label="Land"
+                value={formatUSD(assessment?.appraisedLand)}
+              />
+              <Field
+                label="Improvements"
+                value={formatUSD(assessment?.appraisedImprovement)}
+              />
+              <Field
+                label="Total appraised"
+                value={formatUSD(assessment?.appraisedTotal)}
+              />
+              <Field
+                label="Tax year"
+                value={assessment?.taxYear ?? null}
+              />
+              <Field
+                label="Levy jurisdiction"
+                value={assessment?.levyJurisdiction}
+              />
+            </ReportPanel>
+
             <ReportPanel title="Lot" sourced={sv}>
               <Field
                 label="Lot size"
@@ -102,6 +134,30 @@ export default async function ParcelPage({
                 release. {ZONING_DISCLAIMER}
               </p>
             </ReportPanel>
+
+            <TaxDeadlines sourced={taxCalendar} />
+
+            <section
+              aria-label="Official county record"
+              className="rounded-xl border border-gray-200 bg-gray-50 p-5"
+            >
+              <h2 className="text-lg font-semibold">Official county record</h2>
+              <p className="mt-1 text-sm text-gray-600">
+                View the authoritative record and your live tax bill on King
+                County&apos;s site — assessment history, sales, and the current
+                balance owed.
+              </p>
+              <a
+                href={eRealPropertyUrl(p.pin)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+              >
+                Open King County eReal Property
+                <span aria-hidden="true">↗</span>
+                <span className="sr-only">(opens in a new tab)</span>
+              </a>
+            </section>
           </div>
 
           <footer className="mt-8 border-t border-gray-100 pt-6 text-xs text-gray-400">
