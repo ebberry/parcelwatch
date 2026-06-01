@@ -1,15 +1,15 @@
-import { haversineKm } from "@/lib/geo";
+import { haversineKm, kmToMiles } from "@/lib/geo";
 
-/** A shared shape for "nearby sites" sources (EPA, Ecology, DOH). */
+/** A shared shape for "nearby sites" sources (EPA, …). Distances in miles. */
 export interface NearbySite {
   name: string | null;
   detail: string | null;
-  distanceKm: number | null;
+  distanceMi: number | null;
 }
 
 export interface NearbySites {
   count: number;
-  radiusKm: number;
+  radiusMi: number;
   nearest: NearbySite[];
 }
 
@@ -22,27 +22,27 @@ export interface RawSite {
 }
 
 /**
- * Compute distances from the origin, sort nearest-first, and keep the closest
- * `take`. `count` is the total within the queried radius (after the caller's
- * own de-duplication). Pure + testable.
+ * Compute distances from the origin (in miles), sort nearest-first, and keep the
+ * closest `take`. `count` is the total within the queried radius (after the
+ * caller's own de-duplication). Pure + testable.
  */
 export function buildNearbySites(
   origin: { lat: number; lon: number },
   sites: RawSite[],
-  opts: { radiusKm: number; take?: number },
+  opts: { radiusMi: number; take?: number },
 ): NearbySites {
   const withDist: NearbySite[] = sites.map((s) => ({
     name: s.name,
     detail: s.detail,
-    distanceKm:
+    distanceMi:
       s.lat != null && s.lon != null
-        ? Math.round(haversineKm(origin.lat, origin.lon, s.lat, s.lon) * 10) / 10
+        ? Math.round(kmToMiles(haversineKm(origin.lat, origin.lon, s.lat, s.lon)) * 10) / 10
         : null,
   }));
-  withDist.sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9));
+  withDist.sort((a, b) => (a.distanceMi ?? 1e9) - (b.distanceMi ?? 1e9));
   return {
     count: sites.length,
-    radiusKm: opts.radiusKm,
+    radiusMi: opts.radiusMi,
     nearest: withDist.slice(0, opts.take ?? 5),
   };
 }

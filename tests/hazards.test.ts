@@ -47,7 +47,7 @@ describe("usgsEarthquakeAdapter.normalize", () => {
 
   it("counts all features and tags the window/radius from config", () => {
     expect(result.count).toBe(usgs.features.length);
-    expect(result.radiusKm).toBe(100);
+    expect(result.radiusMi).toBe(62); // 100 km ≈ 62 miles
     expect(result.minMagnitude).toBe(2.5);
   });
 
@@ -65,11 +65,11 @@ describe("usgsEarthquakeAdapter.normalize", () => {
     }
   });
 
-  it("computes a plausible distance from the parcel for each quake", () => {
+  it("computes a plausible distance in miles from the parcel for each quake", () => {
     for (const q of result.recent) {
-      expect(q.distanceKm).not.toBeNull();
-      expect(q.distanceKm!).toBeGreaterThanOrEqual(0);
-      expect(q.distanceKm!).toBeLessThanOrEqual(120); // within query radius + rounding
+      expect(q.distanceMi).not.toBeNull();
+      expect(q.distanceMi!).toBeGreaterThanOrEqual(0);
+      expect(q.distanceMi!).toBeLessThanOrEqual(80); // 100 km ≈ 62 miles + rounding
     }
   });
 });

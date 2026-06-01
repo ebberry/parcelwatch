@@ -1,3 +1,15 @@
+export const KM_PER_MILE = 1.609344;
+
+/** Convert kilometers to miles. */
+export function kmToMiles(km: number): number {
+  return km / KM_PER_MILE;
+}
+
+/** Convert miles to kilometers. */
+export function milesToKm(mi: number): number {
+  return mi * KM_PER_MILE;
+}
+
 /** Great-circle distance between two WGS84 points, in kilometers. */
 export function haversineKm(
   aLat: number,

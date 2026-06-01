@@ -12,7 +12,8 @@ import { buildNearbySites, type NearbySites, type RawSite } from "@/lib/environm
 const FRS_QUERY =
   "https://geodata.epa.gov/arcgis/rest/services/OEI/FRS_INTERESTS/MapServer/8/query";
 
-const RADIUS_M = 3000;
+const RADIUS_MI = 2; // ~3.2 km — about 2 miles
+const RADIUS_M = Math.round(RADIUS_MI * 1609.344);
 
 interface FrsAttrs {
   REGISTRY_ID: string | null;
@@ -60,6 +61,6 @@ export const epaFrsAdapter: DataSourceAdapter<RawEpa, NearbySites> = {
       lat: row.LATITUDE83 ?? null,
       lon: row.LONGITUDE83 ?? null,
     }));
-    return buildNearbySites(raw.origin, sites, { radiusKm: RADIUS_M / 1000, take: 6 });
+    return buildNearbySites(raw.origin, sites, { radiusMi: RADIUS_MI, take: 6 });
   },
 };

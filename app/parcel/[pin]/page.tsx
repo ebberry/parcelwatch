@@ -186,7 +186,7 @@ export default async function ParcelPage({
               title="EPA-regulated sites nearby"
               icon={Factory}
               sourced={epa}
-              noneMessage="No EPA-regulated facilities within 3 km."
+              noneMessage="No EPA-regulated facilities within 2 miles."
             />
 
             <WaterPanel

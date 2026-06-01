@@ -16,12 +16,12 @@ describe("buildNearbySites", () => {
         { name: "near", detail: null, lat: 47.332, lon: -122.500 },
         { name: "mid", detail: null, lat: 47.35, lon: -122.50 },
       ],
-      { radiusKm: 3, take: 2 },
+      { radiusMi: 2, take: 2 },
     );
     expect(out.count).toBe(3);
     expect(out.nearest).toHaveLength(2);
     expect(out.nearest[0].name).toBe("near");
-    expect(out.nearest[0].distanceKm).toBeLessThan(out.nearest[1].distanceKm!);
+    expect(out.nearest[0].distanceMi).toBeLessThan(out.nearest[1].distanceMi!);
   });
 });
 

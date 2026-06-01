@@ -29,7 +29,7 @@ export function NearbySitesPanel({
         <>
           <p className="mb-1 text-sm text-pw-sub">
             <span className="font-medium tabular-nums text-pw-ink">{s.count}</span>{" "}
-            within {s.radiusKm} km
+            within {s.radiusMi} mi
             {s.count > s.nearest.length ? ` · nearest ${s.nearest.length}` : ""}
           </p>
           <ul className="divide-y-[0.5px] divide-pw-divider">
@@ -44,9 +44,9 @@ export function NearbySitesPanel({
                     <span className="block text-xs text-pw-faint">{site.detail}</span>
                   )}
                 </span>
-                {site.distanceKm != null && (
+                {site.distanceMi != null && (
                   <span className="shrink-0 tabular-nums text-pw-sub">
-                    {site.distanceKm} km
+                    {site.distanceMi} mi
                   </span>
                 )}
               </li>

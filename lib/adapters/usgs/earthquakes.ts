@@ -1,5 +1,5 @@
 import type { DataSourceAdapter, ParcelLookupContext } from "@/lib/adapters/types";
-import { haversineKm } from "@/lib/geo";
+import { haversineKm, kmToMiles } from "@/lib/geo";
 
 /**
  * USGS Earthquake Catalog — recent seismic activity near a point.
@@ -34,12 +34,12 @@ export interface Earthquake {
   place: string | null;
   time: string | null; // ISO
   depthKm: number | null;
-  distanceKm: number | null;
+  distanceMi: number | null;
   url: string | null;
 }
 
 export interface SeismicActivity {
-  radiusKm: number;
+  radiusMi: number;
   windowDays: number;
   minMagnitude: number;
   count: number;
@@ -86,9 +86,9 @@ export const usgsEarthquakeAdapter: DataSourceAdapter<RawSeismic, SeismicActivit
         place: f.properties.place ?? null,
         time: f.properties.time != null ? new Date(f.properties.time).toISOString() : null,
         depthKm: depth ?? null,
-        distanceKm:
+        distanceMi:
           lat != null && lon != null
-            ? Math.round(haversineKm(raw.origin.lat, raw.origin.lon, lat, lon))
+            ? Math.round(kmToMiles(haversineKm(raw.origin.lat, raw.origin.lon, lat, lon)) * 10) / 10
             : null,
         url: f.properties.url ?? null,
       };
@@ -104,7 +104,7 @@ export const usgsEarthquakeAdapter: DataSourceAdapter<RawSeismic, SeismicActivit
     }, null);
 
     return {
-      radiusKm: SEISMIC_RADIUS_KM,
+      radiusMi: Math.round(kmToMiles(SEISMIC_RADIUS_KM)),
       windowDays: SEISMIC_WINDOW_DAYS,
       minMagnitude: SEISMIC_MIN_MAGNITUDE,
       count: quakes.length,

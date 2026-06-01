@@ -79,8 +79,8 @@ function QuakeRow({ q }: { q: Earthquake }) {
       </span>
       <span className="shrink-0 text-right text-pw-faint">
         <span className="tabular-nums">{shortDate(q.time)}</span>
-        {q.distanceKm != null && (
-          <span className="block text-xs tabular-nums">{q.distanceKm} km away</span>
+        {q.distanceMi != null && (
+          <span className="block text-xs tabular-nums">{q.distanceMi} mi away</span>
         )}
       </span>
     </li>
@@ -95,15 +95,15 @@ export function SeismicPanel({ sourced }: { sourced: SourcedValue<SeismicActivit
         <p className="text-sm text-pw-faint">Not available</p>
       ) : s.count === 0 ? (
         <QuietNote>
-          No earthquakes of magnitude {s.minMagnitude}+ within {s.radiusKm} km in
+          No earthquakes of magnitude {s.minMagnitude}+ within {s.radiusMi} miles in
           the past year.
         </QuietNote>
       ) : (
         <>
           <p className="text-sm text-pw-sub">
             <span className="font-medium tabular-nums text-pw-ink">{s.count}</span>{" "}
-            earthquakes of magnitude {s.minMagnitude}+ within {s.radiusKm} km in the
-            past year.
+            earthquakes of magnitude {s.minMagnitude}+ within {s.radiusMi} miles in
+            the past year.
           </p>
           {s.largest && (
             <p className="mt-1 text-sm text-pw-sub">
