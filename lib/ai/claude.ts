@@ -11,7 +11,8 @@
  */
 
 const API_URL = "https://api.anthropic.com/v1/messages";
-const DEFAULT_MODEL = "claude-3-5-haiku-latest";
+// Small, cheap, fast model — these are short classify/summarize tasks (cached).
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 
 export class AiError extends Error {
   constructor(message: string) {
