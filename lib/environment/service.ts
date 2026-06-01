@@ -2,13 +2,11 @@ import { runAdapter } from "@/lib/adapters";
 import { sourceCache } from "@/lib/adapters/cache-instance";
 import { epaFrsAdapter } from "@/lib/adapters/epa/sites";
 import { dohWaterAdapter } from "@/lib/adapters/doh/water";
-import { nwsAlertsAdapter, type WeatherAlerts } from "@/lib/adapters/nws/alerts";
 import { fetchNeighborhoodStats, type NeighborhoodStats } from "@/lib/adapters/census/neighborhood";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
 import type { NearbySites } from "@/lib/environment/nearby";
 
 export type { NearbySites, NearbySite } from "@/lib/environment/nearby";
-export type { WeatherAlerts } from "@/lib/adapters/nws/alerts";
 export type { NeighborhoodStats } from "@/lib/adapters/census/neighborhood";
 
 type LatLon = { lat: number | null; lon: number | null };
@@ -22,11 +20,6 @@ export async function getEpaSites(lat: number | null, lon: number | null): Promi
 export async function getWaterSystems(lat: number | null, lon: number | null): Promise<SourcedValue<NearbySites>> {
   if (noCoords({ lat, lon })) return unavailable(dohWaterAdapter.sourceLabel);
   return runAdapter(dohWaterAdapter, { lat: lat!, lon: lon! }, { cache: sourceCache });
-}
-
-export async function getWeatherAlerts(lat: number | null, lon: number | null): Promise<SourcedValue<WeatherAlerts>> {
-  if (noCoords({ lat, lon })) return unavailable(nwsAlertsAdapter.sourceLabel);
-  return runAdapter(nwsAlertsAdapter, { lat: lat!, lon: lon! }, { cache: sourceCache });
 }
 
 /** True when a Census API key is configured (gates the neighborhood-stats panel). */

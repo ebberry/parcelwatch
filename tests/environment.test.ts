@@ -1,14 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { epaFrsAdapter, type RawEpa } from "@/lib/adapters/epa/sites";
 import { dohWaterAdapter, type RawDoh } from "@/lib/adapters/doh/water";
-import { nwsAlertsAdapter } from "@/lib/adapters/nws/alerts";
 import { buildNearbySites } from "@/lib/environment/nearby";
 
 // Real responses captured live 2026-05-31. See /docs/data-sources.md.
 import epaFixture from "./fixtures/epa-frs.json";
 import dohFixture from "./fixtures/doh-water.json";
-import nwsEmpty from "./fixtures/nws-alerts-empty.json";
-import nwsActive from "./fixtures/nws-alerts-active.json";
 
 const ORIGIN = { lat: 47.3314667, lon: -122.50043043 };
 
@@ -67,17 +64,5 @@ describe("dohWaterAdapter.normalize (real fixture, geometry-based)", () => {
     expect(out.count).toBeGreaterThan(0);
     expect(out.nearest[0].distanceKm).not.toBeNull();
     expect(out.nearest.some((s) => /Group [AB]/.test(s.detail ?? ""))).toBe(true);
-  });
-});
-
-describe("nwsAlertsAdapter.normalize", () => {
-  it("returns zero alerts for the quiet (empty) fixture", () => {
-    expect(nwsAlertsAdapter.normalize(nwsEmpty).count).toBe(0);
-  });
-
-  it("maps active alerts with event + severity", () => {
-    const out = nwsAlertsAdapter.normalize(nwsActive);
-    expect(out.count).toBeGreaterThan(0);
-    expect(out.alerts[0].event).toBeTruthy();
   });
 });

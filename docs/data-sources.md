@@ -166,14 +166,17 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - `https://services8.arcgis.com/rGGrs6HCnw87OFOT/arcgis/rest/services/Drinking_Water_Systems/FeatureServer/0/query`
 - Fields: `WS_Name`, `WS_Grp` (A/B), `WS_Status`. No lat/lon fields → read geometry (outSR=4326).
 
-### NWS active weather alerts — ✅ shipped
-- `https://api.weather.gov/alerts/active?point=<lat>,<lon>` — **requires a User-Agent header**.
-- GeoJSON; `properties.event/severity/headline/areaDesc/expires`.
+### NWS active weather alerts — ⛔ DROPPED (product fit)
+- Verified working (`https://api.weather.gov/alerts/active?point=<lat>,<lon>`, needs a
+  User-Agent header) but removed: live weather is a real-time utility that doesn't fit
+  ParcelWatch's deep, durable property-research character. Adapter removed.
 
-### U.S. Census — ⚠️ geocoder shipped, ACS gated on key
+### U.S. Census ACS — ✅ shipped (verified live with key)
 - Geocoder (KEYLESS, verified): `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?...` → tract (e.g. 53033027702).
-- ACS 5-year data **requires a free `CENSUS_API_KEY`** (keyless retired → `missing_key.html`).
-  Built to the `[[headers],[values]]` format; **UNVERIFIED-live until a key is added**.
+- ACS 5-year (2023): `https://api.census.gov/data/2023/acs/acs5?get=...&for=tract:...&in=state:53%20county:033&key=CENSUS_API_KEY`.
+  Keyless access retired → needs a free key (in `.env`, gitignored). Verified live: tract
+  277.02 → pop 4,825, median income $125,587, median home value $763,100, 82% owner-occupied.
+  Vars: B01003_001E (pop), B19013_001E (income), B25077_001E (home value), B25003_001E/002E (tenure).
 
 ### ⛔ WA Ecology TCP CleanupSites — DEFERRED (unreliable spatial filter)
 - `services.arcgis.com/6lCKYNJLvwTXqrmp/.../TCP/FeatureServer/0` returns sites far

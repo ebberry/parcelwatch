@@ -7,7 +7,6 @@ import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
 import {
   getEpaSites,
   getWaterSystems,
-  getWeatherAlerts,
   getNeighborhoodStats,
   censusKeyConfigured,
 } from "@/lib/environment/service";
@@ -19,7 +18,6 @@ import { ZoningPanel } from "@/components/ZoningPanel";
 import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
 import {
   NearbySitesPanel,
-  WeatherAlertsPanel,
   NeighborhoodPanel,
 } from "@/components/EnvironmentPanels";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
@@ -69,15 +67,13 @@ export default async function ParcelPage({
   // Environment + area sources are independent — fetch them concurrently.
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, epa, water, weather, neighborhood] =
-    await Promise.all([
-      getFloodHazard(lat, lon),
-      getSeismicActivity(lat, lon),
-      getEpaSites(lat, lon),
-      getWaterSystems(lat, lon),
-      getWeatherAlerts(lat, lon),
-      getNeighborhoodStats(lat, lon),
-    ]);
+  const [flood, seismic, epa, water, neighborhood] = await Promise.all([
+    getFloodHazard(lat, lon),
+    getSeismicActivity(lat, lon),
+    getEpaSites(lat, lon),
+    getWaterSystems(lat, lon),
+    getNeighborhoodStats(lat, lon),
+  ]);
   const needsCensusKey = !censusKeyConfigured();
 
   return (
@@ -191,8 +187,6 @@ export default async function ParcelPage({
               sourced={water}
               noneMessage="No public water systems within 3 km — this area may rely on private wells."
             />
-
-            <WeatherAlertsPanel sourced={weather} />
 
             <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
 

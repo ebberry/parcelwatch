@@ -2,7 +2,7 @@ import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { Field } from "@/components/ReportPanel";
 import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
-import type { NearbySites, WeatherAlerts, NeighborhoodStats } from "@/lib/environment/service";
+import type { NearbySites, NeighborhoodStats } from "@/lib/environment/service";
 
 function Shell({
   title,
@@ -63,45 +63,6 @@ export function NearbySitesPanel({
             ))}
           </ul>
         </>
-      )}
-    </Shell>
-  );
-}
-
-const SEVERITY_DOT: Record<string, string> = {
-  Extreme: "bg-red-600",
-  Severe: "bg-red-600",
-  Moderate: "bg-confidence-stale",
-  Minor: "bg-confidence-stale",
-  Unknown: "bg-confidence-unavailable",
-};
-
-export function WeatherAlertsPanel({ sourced }: { sourced: SourcedValue<WeatherAlerts> }) {
-  const w = sourced.value;
-  return (
-    <Shell title="Active weather alerts" sourced={sourced}>
-      {!w ? (
-        <p className="text-sm italic text-gray-400">Not available</p>
-      ) : w.count === 0 ? (
-        <p className="rounded-lg bg-green-50 px-3 py-2 text-sm font-medium text-confidence-confirmed">
-          No active weather alerts for this location.
-        </p>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {w.alerts.map((a, i) => (
-            <li key={`${a.event}-${i}`} className="py-2 text-sm">
-              <span className="flex items-center gap-2 font-medium text-gray-900">
-                <span
-                  className={`h-2 w-2 rounded-full ${SEVERITY_DOT[a.severity ?? "Unknown"] ?? SEVERITY_DOT.Unknown}`}
-                  aria-hidden="true"
-                />
-                {a.event ?? "Alert"}
-                {a.severity && <span className="text-xs font-normal text-gray-500">({a.severity})</span>}
-              </span>
-              {a.area && <span className="block text-xs text-gray-500">{a.area}</span>}
-            </li>
-          ))}
-        </ul>
       )}
     </Shell>
   );
