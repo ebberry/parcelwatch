@@ -45,6 +45,9 @@ interface QueryOptions {
   returnGeometry?: boolean;
   orderByFields?: string;
   resultRecordCount?: number;
+  /** Optional point + radius buffer (intersects within `distanceMeters`). */
+  point?: { lat: number; lon: number };
+  distanceMeters?: number;
   /** Network timeout; failures surface as ArcgisError for graceful degradation. */
   timeoutMs?: number;
 }
@@ -61,6 +64,16 @@ export async function queryLayer<A>(
   if (opts.orderByFields) params.set("orderByFields", opts.orderByFields);
   if (opts.resultRecordCount != null) {
     params.set("resultRecordCount", String(opts.resultRecordCount));
+  }
+  if (opts.point) {
+    params.set("geometry", `${opts.point.lon},${opts.point.lat}`);
+    params.set("geometryType", "esriGeometryPoint");
+    params.set("inSR", "4326");
+    params.set("spatialRel", "esriSpatialRelIntersects");
+    if (opts.distanceMeters != null) {
+      params.set("distance", String(opts.distanceMeters));
+      params.set("units", "esriSRUnit_Meter");
+    }
   }
 
   let res: Response;

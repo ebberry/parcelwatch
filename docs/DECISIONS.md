@@ -4,6 +4,39 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Assisted assessed-value appeals (user request)
+
+### Assisted prep + hand-off, never auto-submit
+**Why:** King County's Board of Equalization has no submission API; filing is via
+the eAppeals portal (owner login) or a mailed petition. Auto-submitting a quasi-
+legal filing on someone's behalf raises authorization/agency + portal-ToS +
+fragility problems. So we pre-fill the official petition and the owner reviews
+and files it themselves (user chose this over full auto-submit). Output is a
+print-to-PDF petition + a deep-link to eAppeals — no new PDF dependency.
+
+### Comparable ASSESSMENTS (uniformity), not sales — and honestly labeled
+**Why:** There's no clean live King County sales API (only the bulk roll). So the
+comp engine uses assessed values of nearby same-use parcels — a single layer-1722
+distance query — which is legitimate "uniformity" appeal evidence (the county
+assesses similar homes lower than yours). We label it as assessment-comparison,
+not sales, and flag that per-lot-sqft is a rough screen (no building size /
+condition). Real sale comps remain a bulk-roll follow-up.
+
+### Non-AVM: the owner states their own opinion of value
+**Why:** The brief forbids an automated valuation model. We never compute a
+suggested value; we show real comp medians as *reference* and the owner enters
+their own opinion of value. `buildUniformityNarrative` returns null unless the
+data actually supports an over-assessment — we never manufacture a claim. (Live
+proof: the Vashon sample is 7% *below* its comp median, and the tool says so
+rather than inventing grounds.)
+
+### Comp normalization by lot square foot (documented limitation)
+**Why:** Layer 1722 has lot size but not building/living area, so we normalize
+assessed value by lot sqft and filter comps to 0.4×–2.5× the subject's lot. It's
+a rough uniformity screen, surfaced with that caveat — not a formal appraisal.
+
+---
+
 ## 2026-05-31 — Plain-language jargon (user request)
 
 ### A glossary + accessible info-tips; decode codes inline

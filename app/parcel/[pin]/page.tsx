@@ -163,6 +163,26 @@ export default async function ParcelPage({
             <TaxDeadlines sourced={taxCalendar} />
 
             <section
+              aria-label="Appeal your assessment"
+              className="rounded-xl border border-sky-200 bg-sky-50 p-5"
+            >
+              <h2 className="text-lg font-semibold">
+                Think your assessment is too high?
+              </h2>
+              <p className="mt-1 text-sm text-gray-600">
+                We&apos;ll pre-fill the Board of Equalization petition with your
+                property facts and comparable-assessment evidence — you review and
+                file it through King County eAppeals.
+              </p>
+              <Link
+                href={`/parcel/${p.pin}/appeal`}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white"
+              >
+                Prepare an assessment appeal <span aria-hidden="true">→</span>
+              </Link>
+            </section>
+
+            <section
               aria-label="Official county record"
               className="rounded-xl border border-gray-200 bg-gray-50 p-5"
             >

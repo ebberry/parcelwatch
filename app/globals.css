@@ -21,3 +21,24 @@ body {
   outline: 2px solid #0369a1;
   outline-offset: 2px;
 }
+
+/* Print: show only the petition preview (the .print-area) when printing. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    border: none;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

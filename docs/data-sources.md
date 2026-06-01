@@ -143,8 +143,20 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - **EPA Envirofacts** — no clean radius/point query; needs FRS geospatial work.
 - **WA Dept of Ecology** (shoreline/critical areas) and **WA DOH** drinking-water (Sentry).
 
+## Appeals feature (verified 2026-05-31)
+
+- **Comparable assessments:** layer 1722 distance query — `geometry` (point) +
+  `distance` + `units=esriSRUnit_Meter` + `spatialRel=esriSpatialRelIntersects`,
+  `where=PREUSE_CODE=<n> AND PRIMARY_ADDR=1 AND APPR_IMPR>0 AND LOTSQFT>0 AND PIN<>'<subject>'`.
+  Returns nearby same-use parcels with assessed values + LAT/LON. (Not sales —
+  no live KC sales API; that's a bulk-roll follow-up.)
+- **eAppeals portal (file online, owner login):** `https://blue.kingcounty.gov/assessor/eappeals/RPLookup.aspx` (200 OK).
+- **BOE petition forms (mail filing):** `https://kingcounty.gov/en/independents/governance-and-leadership/government-oversight/board-appeals-equalization/appeals-forms` (200 OK).
+- Deadline rule (computed): 60 days from value notice or July 1, whichever later.
+
 ## To verify before later slices
 
+- [ ] King County real-property **sales** source (bulk EXTR_RPSale) for sale-based comps.
 - [ ] EPA FRS geospatial endpoint + WA Ecology/DOH (Slice 3b).
 - [ ] Urban R-zone dimensional standards (when extending the zoning engine).
 - [ ] Zoning layer 450 field names (authoritative-zoning cross-check).
