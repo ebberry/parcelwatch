@@ -46,6 +46,8 @@ export interface WatchItem {
   detail: string | null;
   /** Full source text (e.g. the legal MatterTitle) — grounding for AI summaries. */
   fullText: string | null;
+  /** Human-readable source label, e.g. "Seattle City Council (Legistar)". */
+  source: string;
   url: string | null;
   /** ISO date the item was introduced/updated. */
   date: string | null;

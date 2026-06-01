@@ -1,36 +1,46 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { watches, alerts } from "@/db/schema";
-import { fetchCouncilItems } from "./sources/council";
+import { fetchLegistarMatters } from "./sources/legistar";
+import { fetchNewBills, normalizeLegislature, sinceDate } from "./sources/legislature";
 import {
   attachCachedInsights,
   relevanceRank,
-  type CouncilInsight,
-} from "@/lib/ai/council";
+  type CivicInsight,
+} from "@/lib/ai/civic";
+import type { AreaContext } from "./area";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
 import type { WatchItem } from "./index";
 
-const COUNCIL_LABEL = "King County Council (Legistar)";
-
-/** A council item plus its cached AI insight (null when AI is off / not yet run). */
-export interface CouncilFeedItem extends WatchItem {
-  insight: CouncilInsight | null;
+/** A civic item plus its cached AI insight (null when AI is off / not yet run). */
+export interface CivicFeedItem extends WatchItem {
+  insight: CivicInsight | null;
 }
 
 /**
- * Live "what's in motion" — current King County Council legislation. When AI
- * enrichment is available we attach the cached insight, drop items the model
- * judged irrelevant ("none"), and sort most-relevant first. With no AI (or
- * before the worker has enriched), it behaves exactly as before. The durable
- * alert feed (below) is what diffs over time.
+ * Live "what's in motion" across the parcel's governments — its county and city
+ * councils (Legistar) plus WA state bills — judged for THIS area. When AI
+ * enrichment is cached we drop items the model judged irrelevant ("none") and
+ * sort most-relevant first. Without AI we fall back to the keyword-topic subset
+ * (so a cold/no-key feed isn't a dump of 60 raw items).
  */
-export async function getCouncilActivity(
+export async function getCivicActivity(
+  area: AreaContext,
   limit = 8,
-): Promise<SourcedValue<CouncilFeedItem[]>> {
+): Promise<SourcedValue<CivicFeedItem[]>> {
+  const label = [...area.councils.map((c) => c.label), "WA Legislature"].join(" · ");
   try {
-    const items = await fetchCouncilItems();
-    const insights = await attachCachedInsights(items);
-    let feed: CouncilFeedItem[] = items.map((it) => ({
+    const councilFetches = area.councils.map((c) =>
+      fetchLegistarMatters(c.client, `${c.label} (Legistar)`, 60).catch(() => [] as WatchItem[]),
+    );
+    const legFetch = fetchNewBills(sinceDate())
+      .then(normalizeLegislature)
+      .catch(() => [] as WatchItem[]);
+    const groups = await Promise.all([...councilFetches, legFetch]);
+    const items = groups.flat();
+
+    const insights = await attachCachedInsights(items, area.key);
+    let feed: CivicFeedItem[] = items.map((it) => ({
       ...it,
       insight: insights.get(it.externalId) ?? null,
     }));
@@ -42,15 +52,18 @@ export async function getCouncilActivity(
             relevanceRank(a.insight?.relevance ?? "low") -
             relevanceRank(b.insight?.relevance ?? "low"),
         );
+    } else {
+      // No AI insights yet — show only keyword-topic matches (the prior behavior).
+      feed = feed.filter((f) => f.topics.length > 0);
     }
     return {
       value: feed.slice(0, limit),
-      source: COUNCIL_LABEL,
+      source: label,
       fetchedAt: new Date().toISOString(),
       confidence: "live",
     };
   } catch {
-    return unavailable(COUNCIL_LABEL);
+    return unavailable(label);
   }
 }
 

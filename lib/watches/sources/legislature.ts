@@ -96,6 +96,7 @@ export function normalizeLegislature(bills: WaLegBill[]): WatchItem[] {
       title: `${b.billId}: ${b.shortDescription ?? b.longDescription ?? "No description"}`,
       detail: b.currentStatus ?? null,
       fullText: b.longDescription ?? null,
+      source: "WA Legislature web services",
       url: `https://app.leg.wa.gov/billsummary?BillNumber=${b.billNumber}&Year=${b.biennium.slice(0, 4)}&Initiative=false`,
       date: null,
       topics,

@@ -1,14 +1,17 @@
 import { describe, it, expect } from "vitest";
 import { extractJson, AiError } from "@/lib/ai/claude";
 import {
-  buildCouncilUserPrompt,
-  parseCouncilInsights,
+  buildCivicUserPrompt,
+  parseCivicInsights,
   itemContentHash,
   isRelevant,
   relevanceRank,
-  type CouncilInsight,
-} from "@/lib/ai/council";
+  type CivicInsight,
+} from "@/lib/ai/civic";
+import { resolveArea } from "@/lib/watches/area";
 import type { WatchItem } from "@/lib/watches";
+
+const AREA = resolveArea({ city: "VASHON" });
 
 const item = (externalId: string, title: string, over: Partial<WatchItem> = {}): WatchItem => ({
   kind: "council",
@@ -16,6 +19,7 @@ const item = (externalId: string, title: string, over: Partial<WatchItem> = {}):
   title,
   detail: "Ordinance · In Committee",
   fullText: null,
+  source: "King County Council (Legistar)",
   url: "https://example.test",
   date: "2026-05-01",
   topics: ["shoreline"],
@@ -35,11 +39,11 @@ describe("extractJson", () => {
   });
 });
 
-describe("buildCouncilUserPrompt", () => {
+describe("buildCivicUserPrompt", () => {
   it("includes each item's id, title, and full text for grounding", () => {
-    const prompt = buildCouncilUserPrompt([
+    const prompt = buildCivicUserPrompt([
       item("kc-1", "2026-0123: Shoreline setbacks", { fullText: "AN ORDINANCE relating to shoreline setbacks countywide." }),
-    ]);
+    ], AREA);
     expect(prompt).toMatch(/Vashon Island/);
     expect(prompt).toMatch(/externalId: kc-1/);
     expect(prompt).toMatch(/Shoreline setbacks/);
@@ -47,7 +51,7 @@ describe("buildCouncilUserPrompt", () => {
   });
 });
 
-describe("parseCouncilInsights", () => {
+describe("parseCivicInsights", () => {
   const valid = new Set(["kc-1", "kc-2"]);
 
   it("keeps valid items and coerces fields", () => {
@@ -55,7 +59,7 @@ describe("parseCouncilInsights", () => {
       { externalId: "kc-1", relevance: "high", scope: "countywide", summary: "Does X.", whyItMatters: "Affects your setbacks." },
       { externalId: "kc-2", relevance: "none", scope: "site-specific", summary: "A mainland project.", whyItMatters: "irrelevant" },
     ]);
-    const out = parseCouncilInsights(text, valid);
+    const out = parseCivicInsights(text, valid);
     expect(out).toHaveLength(2);
     expect(out[0].whyItMatters).toBe("Affects your setbacks.");
     // whyItMatters is nulled when relevance is "none".
@@ -68,7 +72,7 @@ describe("parseCouncilInsights", () => {
       { externalId: "kc-1", relevance: "bogus", scope: "weird", summary: "Kept." },
       { externalId: "kc-2", relevance: "high", scope: "countywide", summary: "" },
     ]);
-    const out = parseCouncilInsights(text, valid);
+    const out = parseCivicInsights(text, valid);
     expect(out.map((o) => o.externalId)).toEqual(["kc-1"]);
     expect(out[0].relevance).toBe("low"); // clamped
     expect(out[0].scope).toBe("countywide"); // clamped
@@ -86,7 +90,7 @@ describe("itemContentHash", () => {
 });
 
 describe("relevance helpers", () => {
-  const mk = (relevance: CouncilInsight["relevance"]): CouncilInsight => ({
+  const mk = (relevance: CivicInsight["relevance"]): CivicInsight => ({
     externalId: "x",
     relevance,
     scope: "countywide",

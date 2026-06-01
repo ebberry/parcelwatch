@@ -1,25 +1,27 @@
-import { inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { aiSummaries } from "@/db/schema";
 import type { WatchItem } from "@/lib/watches";
+import type { AreaContext } from "@/lib/watches/area";
 import { aiEnabled, aiModel, claudeMessage, extractJson, AiError } from "./claude";
 
 /**
- * AI enrichment for King County Council items — judges relevance to a Vashon /
- * rural King County homeowner and explains, in plain language, why an item may
- * matter. Solves the keyword filter's false positives (e.g. the *City of*
- * Shoreline matching the "shoreline" topic) by actually reading the item.
+ * AI enrichment for civic legislation (county / city council + state bills) —
+ * judges relevance to the parcel's AREA and explains, in plain language, why an
+ * item may matter. This is what makes both "too far away" filtering and city
+ * enrichment correct: relevance is judged against THIS parcel's jurisdiction,
+ * and insights are cached per (item, area) so a Seattle ordinance can be
+ * relevant to a Seattle parcel and "none" to a Vashon one.
  *
  * Grounding is enforced in the prompt: summarize ONLY from the provided text,
- * never invent specifics. Output is cached by content hash (worker writes,
- * request path reads) so steady-state cost is ~zero. Always labeled as an AI
- * summary, distinct from the authoritative Legistar source.
+ * never invent specifics. Output is cached (worker writes, request path reads)
+ * and always labeled as an AI summary, distinct from the authoritative source.
  */
 
 export type Relevance = "high" | "medium" | "low" | "none";
 export type Scope = "countywide" | "regional" | "site-specific";
 
-export interface CouncilInsight {
+export interface CivicInsight {
   externalId: string;
   relevance: Relevance;
   scope: Scope;
@@ -31,21 +33,16 @@ export interface CouncilInsight {
 
 const RELEVANCE: Relevance[] = ["high", "medium", "low", "none"];
 const SCOPES: Scope[] = ["countywide", "regional", "site-specific"];
-
-/** The homeowner context the model judges relevance against (first market). */
-const AREA_CONTEXT =
-  "a residential property owner on Vashon Island, in unincorporated King County, Washington — an island community reached only by ferry, separate from the county's mainland cities (Seattle, Shoreline, Bellevue, Kent, etc.)";
-
 const BATCH_SIZE = 10;
 
-const SYSTEM_PROMPT = `You help a homeowner understand King County Council legislation. For each item you will judge how much it matters to the described homeowner and explain it plainly.
+const SYSTEM_PROMPT = `You help a homeowner understand pending legislation from their local governments (county, city, and state). For each item you will judge how much it matters to the described homeowner and explain it plainly.
 
 Strict rules:
 - Use ONLY the text provided for each item. Never use outside knowledge and never invent specifics (names, places, dollar amounts, dates) not present in the text.
 - If an item's text is too vague to tell, set relevance "low" and say it's unclear.
-- "scope": countywide (applies across all of King County), regional (a sub-area or corridor), or site-specific (one address/parcel/project).
-- A site-specific item about a place far from the homeowner's area does NOT affect them: set relevance "none". For example, an item about a specific property in a mainland city does not affect a Vashon Island homeowner.
-- "relevance": high = likely direct effect on this homeowner's property, taxes, services, or rights; medium = plausible area-wide interest; low = minor or unclear; none = unrelated or a far-away site-specific matter.
+- "scope": countywide (applies across the whole jurisdiction), regional (a sub-area or corridor), or site-specific (one address/parcel/project).
+- A site-specific item about a place OUTSIDE or far from the homeowner's area does NOT affect them: set relevance "none". For example, an item about a specific property in a different city does not affect this homeowner.
+- "relevance": high = likely direct effect on this homeowner's property, taxes, services, or rights; medium = plausible area-wide interest; low = minor or unclear; none = unrelated or a far-away/other-jurisdiction site-specific matter.
 - "summary": ONE sentence, plain language, on what the item does.
 - "whyItMatters": ONE sentence on the concrete impact to THIS homeowner, or null when relevance is "none".
 - Be concise and neutral — no legalese, no hype.
@@ -53,25 +50,26 @@ Strict rules:
 Respond with ONLY a JSON array, one object per item, in exactly this shape (no prose, no code fences):
 [{"externalId":"<id>","relevance":"high|medium|low|none","scope":"countywide|regional|site-specific","summary":"...","whyItMatters":"..."|null}]`;
 
-/** Build the user message listing the items. Pure (exported for tests). */
-export function buildCouncilUserPrompt(items: WatchItem[]): string {
+/** Build the user message listing the items, for a given area. Pure. */
+export function buildCivicUserPrompt(items: WatchItem[], area: AreaContext): string {
   const lines = items.map((it, i) => {
     const parts = [
       `${i + 1}. externalId: ${it.externalId}`,
+      `   source: ${it.source}`,
       `   title: ${it.title}`,
     ];
     if (it.fullText) parts.push(`   full text: ${it.fullText}`);
     if (it.detail) parts.push(`   type/status: ${it.detail}`);
     return parts.join("\n");
   });
-  return `The homeowner is ${AREA_CONTEXT}.\n\nItems:\n${lines.join("\n\n")}`;
+  return `The homeowner is ${area.description}.\n\nItems:\n${lines.join("\n\n")}`;
 }
 
 /** Validate + coerce the model's array against the items we asked about. Pure. */
-export function parseCouncilInsights(text: string, validIds: Set<string>): CouncilInsight[] {
+export function parseCivicInsights(text: string, validIds: Set<string>): CivicInsight[] {
   const raw = extractJson<unknown[]>(text);
   if (!Array.isArray(raw)) throw new AiError("Expected a JSON array of insights");
-  const out: CouncilInsight[] = [];
+  const out: CivicInsight[] = [];
   for (const r of raw) {
     if (!r || typeof r !== "object") continue;
     const o = r as Record<string, unknown>;
@@ -103,37 +101,36 @@ export function itemContentHash(item: WatchItem): string {
 }
 
 interface CacheRow {
-  externalId: string;
   contentHash: string;
-  insight: CouncilInsight;
+  insight: CivicInsight;
 }
 
-async function readCache(ids: string[]): Promise<Map<string, CacheRow>> {
+async function readCache(ids: string[], areaKey: string): Promise<Map<string, CacheRow>> {
   const map = new Map<string, CacheRow>();
   if (!ids.length) return map;
   const rows = await getDb()
     .select()
     .from(aiSummaries)
-    .where(inArray(aiSummaries.externalId, ids));
+    .where(and(eq(aiSummaries.areaKey, areaKey), inArray(aiSummaries.externalId, ids)));
   for (const r of rows) {
     map.set(r.externalId, {
-      externalId: r.externalId,
       contentHash: r.contentHash,
-      insight: r.data as unknown as CouncilInsight,
+      insight: r.data as unknown as CivicInsight,
     });
   }
   return map;
 }
 
 /**
- * REQUEST PATH (read-only): attach cached insights to items. Never calls the
- * API, so it adds no latency or cost to a page view.
+ * REQUEST PATH (read-only): attach cached insights for this area to items.
+ * Never calls the API — no latency or cost on a page view.
  */
 export async function attachCachedInsights(
   items: WatchItem[],
-): Promise<Map<string, CouncilInsight>> {
-  const cache = await readCache(items.map((i) => i.externalId));
-  const out = new Map<string, CouncilInsight>();
+  areaKey: string,
+): Promise<Map<string, CivicInsight>> {
+  const cache = await readCache(items.map((i) => i.externalId), areaKey);
+  const out = new Map<string, CivicInsight>();
   for (const item of items) {
     const hit = cache.get(item.externalId);
     if (hit && hit.contentHash === itemContentHash(item)) {
@@ -144,17 +141,18 @@ export async function attachCachedInsights(
 }
 
 /**
- * WORKER PATH: enrich items, calling Claude for cache misses (in batches) and
- * persisting results. Returns insights for every item we could enrich. Degrades
- * to an empty map when AI is disabled or the API errors — never throws.
+ * WORKER PATH: enrich items for an area, calling Claude for cache misses (in
+ * batches) and persisting per (item, area). Degrades to whatever is cached when
+ * AI is disabled or the API errors — never throws.
  */
-export async function enrichAndCacheCouncil(
+export async function enrichAndCacheCivic(
   items: WatchItem[],
-): Promise<Map<string, CouncilInsight>> {
-  const out = new Map<string, CouncilInsight>();
+  area: AreaContext,
+): Promise<Map<string, CivicInsight>> {
+  const out = new Map<string, CivicInsight>();
   if (!items.length) return out;
 
-  const cache = await readCache(items.map((i) => i.externalId));
+  const cache = await readCache(items.map((i) => i.externalId), area.key);
   const stale: WatchItem[] = [];
   for (const item of items) {
     const hit = cache.get(item.externalId);
@@ -171,14 +169,14 @@ export async function enrichAndCacheCouncil(
   for (let i = 0; i < stale.length; i += BATCH_SIZE) {
     const batch = stale.slice(i, i + BATCH_SIZE);
     const validIds = new Set(batch.map((b) => b.externalId));
-    let insights: CouncilInsight[];
+    let insights: CivicInsight[];
     try {
       const text = await claudeMessage({
         system: SYSTEM_PROMPT,
-        user: buildCouncilUserPrompt(batch),
+        user: buildCivicUserPrompt(batch, area),
         maxTokens: 1500,
       });
-      insights = parseCouncilInsights(text, validIds);
+      insights = parseCivicInsights(text, validIds);
     } catch {
       continue; // degrade gracefully on this batch
     }
@@ -186,19 +184,21 @@ export async function enrichAndCacheCouncil(
     for (const item of batch) {
       const insight = byId.get(item.externalId);
       if (!insight) continue;
+      const hash = itemContentHash(item);
       await getDb()
         .insert(aiSummaries)
         .values({
           externalId: item.externalId,
-          kind: "council",
-          contentHash: itemContentHash(item),
+          areaKey: area.key,
+          kind: item.kind,
+          contentHash: hash,
           data: insight as unknown as Record<string, unknown>,
           model,
         })
         .onConflictDoUpdate({
-          target: aiSummaries.externalId,
+          target: [aiSummaries.externalId, aiSummaries.areaKey],
           set: {
-            contentHash: itemContentHash(item),
+            contentHash: hash,
             data: insight as unknown as Record<string, unknown>,
             model,
             createdAt: new Date(),
@@ -216,6 +216,6 @@ export function relevanceRank(r: Relevance): number {
 }
 
 /** Whether an item is worth surfacing/alerting (high or medium). */
-export function isRelevant(insight: CouncilInsight | undefined): boolean {
+export function isRelevant(insight: CivicInsight | undefined): boolean {
   return insight != null && (insight.relevance === "high" || insight.relevance === "medium");
 }

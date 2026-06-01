@@ -5,7 +5,11 @@ import { fetchCouncilItems } from "./sources/council";
 import { fetchNewBills, normalizeLegislature, sinceDate } from "./sources/legislature";
 import { JURISDICTION_KINDS, type WatchItem, type JurisdictionWatchKind } from "./index";
 import { runParcelWatches, type ParcelPollResult } from "./parcel";
-import { enrichAndCacheCouncil, isRelevant, type CouncilInsight } from "@/lib/ai/council";
+import { enrichAndCacheCivic, isRelevant, type CivicInsight } from "@/lib/ai/civic";
+import { resolveArea } from "./area";
+
+/** Default market area used to judge alert relevance (subscribers are Vashon). */
+const MARKET_AREA = resolveArea({ city: "VASHON" });
 
 export const SOURCE_LABEL: Record<JurisdictionWatchKind, string> = {
   council: "King County Council (Legistar)",
@@ -40,10 +44,10 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
   const db = getDb();
   const items = await fetchItems(kind);
 
-  // AI enrichment for council items (relevance + plain-language "why it matters").
-  // Populates the cache the live feed reads; no-op when AI is disabled.
-  const insights: Map<string, CouncilInsight> =
-    kind === "council" ? await enrichAndCacheCouncil(items) : new Map();
+  // AI enrichment (relevance + plain-language "why it matters") for both council
+  // and legislature, judged against the market area. Populates the cache the live
+  // feed reads; no-op when AI is disabled.
+  const insights: Map<string, CivicInsight> = await enrichAndCacheCivic(items, MARKET_AREA);
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -77,7 +81,7 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
     if (!inserted.length) continue; // already seen
     newItems++;
 
-    // When AI judged a council item, suppress alerts it deemed not worth one
+    // When AI judged an item, suppress alerts it deemed not worth one
     // (irrelevant / far-away). With no insight we keep the topic-based behavior.
     const insight = insights.get(item.externalId);
     if (insight && !isRelevant(insight)) continue;
@@ -94,7 +98,7 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
         title: item.title,
         detail,
         url: item.url,
-        source: insight ? `${SOURCE_LABEL[kind]} · AI summary` : SOURCE_LABEL[kind],
+        source: insight ? `${item.source} · AI summary` : item.source,
         topics: item.topics,
         observedAt: item.date ? new Date(item.date) : null,
       });

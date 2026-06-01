@@ -22,7 +22,8 @@ import {
   getNeighborhoodStats,
   censusKeyConfigured,
 } from "@/lib/environment/service";
-import { getCouncilActivity } from "@/lib/watches/service";
+import { getCivicActivity } from "@/lib/watches/service";
+import { resolveArea } from "@/lib/watches/area";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { titleCaseAddress } from "@/lib/format";
@@ -84,7 +85,7 @@ export default async function ParcelPage({
       getEpaSites(lat, lon),
       getWaterSystem(lat, lon),
       getNeighborhoodStats(lat, lon),
-      getCouncilActivity(),
+      getCivicActivity(resolveArea({ city: p?.city ?? null })),
       p ? getComparables(p) : Promise.resolve(null),
       p ? getSaleComps(p) : Promise.resolve(null),
     ]);

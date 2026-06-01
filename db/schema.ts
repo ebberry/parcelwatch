@@ -52,18 +52,24 @@ export const watchSeen = pgTable(
 );
 
 /**
- * Cached AI enrichments (Claude) — keyed by the source item's external id. The
- * content hash lets us re-summarize only when the underlying item text changes;
- * otherwise we serve the cached JSON for free. Worker writes, request path reads.
+ * Cached AI enrichments (Claude) — keyed by (source item, AREA). Relevance is
+ * area-specific (a Seattle ordinance matters to a Seattle parcel, not a Vashon
+ * one), so the same item can have one insight per area. The content hash lets us
+ * re-summarize only when the item text changes. Worker writes, request reads.
  */
-export const aiSummaries = pgTable("ai_summaries", {
-  externalId: text("external_id").primaryKey(),
-  kind: text("kind").notNull(),
-  contentHash: text("content_hash").notNull(),
-  data: jsonb("data").$type<Record<string, unknown>>().notNull(),
-  model: text("model").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const aiSummaries = pgTable(
+  "ai_summaries",
+  {
+    externalId: text("external_id").notNull(),
+    areaKey: text("area_key").notNull(),
+    kind: text("kind").notNull(),
+    contentHash: text("content_hash").notNull(),
+    data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.externalId, t.areaKey] }) }),
+);
 
 /** Generated alerts — the in-app feed. */
 export const alerts = pgTable(

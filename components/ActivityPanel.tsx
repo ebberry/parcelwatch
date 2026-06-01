@@ -2,8 +2,8 @@ import { Landmark, Sparkles } from "lucide-react";
 import { Panel, QuietNote, StatusPill } from "@/components/Panel";
 import { topicLabel } from "@/lib/watches";
 import type { SourcedValue } from "@/lib/provenance";
-import type { CouncilFeedItem } from "@/lib/watches/service";
-import type { Relevance } from "@/lib/ai/council";
+import type { CivicFeedItem } from "@/lib/watches/service";
+import type { Relevance } from "@/lib/ai/civic";
 
 function shortDate(iso: string | null): string {
   if (!iso) return "";
@@ -27,16 +27,16 @@ const RELEVANCE_PILL: Partial<Record<Relevance, { tone: "watch" | "neutral"; lab
  * pill, and an "AI summary" label (distinct from the authoritative Legistar
  * source). Without AI it falls back to the raw title + type/status.
  */
-export function ActivityPanel({ sourced }: { sourced: SourcedValue<CouncilFeedItem[]> }) {
+export function ActivityPanel({ sourced }: { sourced: SourcedValue<CivicFeedItem[]> }) {
   const items = sourced.value;
   return (
-    <Panel title="In motion — King County Council" icon={Landmark} sourced={sourced}>
+    <Panel title="In motion — your governments" icon={Landmark} sourced={sourced}>
       {!items ? (
         <p className="text-sm text-pw-faint">Not available</p>
       ) : items.length === 0 ? (
         <QuietNote>
-          No recent county legislation touching rural, Vashon, septic, shoreline,
-          ADU, or property-tax topics.
+          No recent county, city, or state legislation that looks relevant to this
+          property right now.
         </QuietNote>
       ) : (
         <ul className="divide-y-[0.5px] divide-pw-divider">
@@ -59,6 +59,8 @@ export function ActivityPanel({ sourced }: { sourced: SourcedValue<CouncilFeedIt
                     </span>
                   )}
                 </div>
+
+                <p className="mt-0.5 text-xs text-pw-faint">{it.source}</p>
 
                 {it.insight ? (
                   <>
