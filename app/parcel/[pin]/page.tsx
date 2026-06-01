@@ -7,11 +7,12 @@ import {
   Landmark,
   Ruler,
   Factory,
-  Scale as ScaleIcon,
-  ArrowRight,
   ExternalLink,
 } from "lucide-react";
 import { getParcelCore } from "@/lib/parcels/service";
+import { getComparables } from "@/lib/comps/service";
+import { getSaleComps } from "@/lib/sales/service";
+import { buildRecommendation } from "@/lib/appeals";
 import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
 import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
@@ -32,6 +33,7 @@ import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
 import { NearbySitesPanel, NeighborhoodPanel } from "@/components/EnvironmentPanels";
 import { WaterPanel } from "@/components/WaterPanel";
 import { ActivityPanel } from "@/components/ActivityPanel";
+import { AppealCallout } from "@/components/AppealCallout";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { BrandMark } from "@/components/BrandMark";
 
@@ -70,7 +72,7 @@ export default async function ParcelPage({
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, epa, water, neighborhood, councilActivity] =
+  const [flood, seismic, epa, water, neighborhood, councilActivity, compSv, saleSv] =
     await Promise.all([
       getFloodHazard(lat, lon),
       getSeismicActivity(lat, lon),
@@ -78,9 +80,18 @@ export default async function ParcelPage({
       getWaterSystem(lat, lon),
       getNeighborhoodStats(lat, lon),
       getCouncilActivity(),
+      p ? getComparables(p) : Promise.resolve(null),
+      p ? getSaleComps(p) : Promise.resolve(null),
     ]);
   const needsCensusKey = !censusKeyConfigured();
   const inFloodHazard = flood.value?.inSFHA === true;
+  const recommendation = p
+    ? buildRecommendation({
+        assessedTotal: p.assessment?.appraisedTotal ?? null,
+        sale: saleSv?.value ?? null,
+        comp: compSv?.value ?? null,
+      })
+    : null;
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
@@ -179,6 +190,8 @@ export default async function ParcelPage({
               </dl>
             </Panel>
 
+            {recommendation && <AppealCallout pin={p.pin} rec={recommendation} />}
+
             <Panel title="Lot" icon={Ruler} sourced={sv}>
               <dl className="divide-y-[0.5px] divide-pw-divider">
                 <Field label="Lot size" value={formatInt(p.lotSqFt)} suffix="sq ft" />
@@ -214,28 +227,6 @@ export default async function ParcelPage({
             <ActivityPanel sourced={councilActivity} />
 
             <TaxDeadlines sourced={taxCalendar} />
-
-            <section
-              aria-label="Appeal your assessment"
-              className="rounded-xl border-[0.5px] border-pw-border bg-pw-accent/10 p-5"
-            >
-              <h2 className="flex items-center gap-2 text-[15px] font-medium text-pw-ink">
-                <ScaleIcon className="h-[18px] w-[18px] text-pw-accent" strokeWidth={1.75} aria-hidden="true" />
-                Think your assessment is too high?
-              </h2>
-              <p className="mt-1.5 text-sm text-pw-sub">
-                We&apos;ll pre-fill the Board of Equalization petition with your
-                property facts and comparable-assessment evidence — you review and
-                file it through King County eAppeals.
-              </p>
-              <Link
-                href={`/parcel/${p.pin}/appeal`}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-pw-green px-4 py-2 text-sm font-medium text-white hover:bg-pw-ink"
-              >
-                Prepare an assessment appeal
-                <ArrowRight className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-              </Link>
-            </section>
 
             <section
               aria-label="Official county record"
