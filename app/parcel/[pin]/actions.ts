@@ -44,9 +44,12 @@ export async function setWatch(formData: FormData): Promise<void> {
   if (existing.length) {
     await db.update(watches).set({ active: enable }).where(eq(watches.id, existing[0].id));
   } else if (enable) {
+    // Keep the originating parcel even for council (one per user via the dedup
+    // above) — it's the user's saved address, which the worker uses to warm the
+    // AI cache for their jurisdiction.
     await db.insert(watches).values({
       userId: session.userId,
-      parcelId: kind === "council" ? null : parcelId,
+      parcelId,
       kind,
       topics: [],
       digestFrequency: "weekly",

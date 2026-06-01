@@ -5,11 +5,38 @@ import { fetchCouncilItems } from "./sources/council";
 import { fetchNewBills, normalizeLegislature, sinceDate } from "./sources/legislature";
 import { JURISDICTION_KINDS, type WatchItem, type JurisdictionWatchKind } from "./index";
 import { runParcelWatches, type ParcelPollResult } from "./parcel";
-import { enrichAndCacheCivic, isRelevant, type CivicInsight } from "@/lib/ai/civic";
-import { resolveArea } from "./area";
+import {
+  enrichAndCacheCivic,
+  attachCachedInsights,
+  isRelevant,
+  type CivicInsight,
+} from "@/lib/ai/civic";
+import { resolveArea, type AreaContext } from "./area";
+import { getActiveAreas, fetchAreaItems } from "./service";
 
 /** Default market area used to judge alert relevance (subscribers are Vashon). */
 const MARKET_AREA = resolveArea({ city: "VASHON" });
+
+export interface WarmResult {
+  area: string;
+  fetched: number;
+  enriched: number;
+}
+
+/**
+ * Warm the AI cache for each area, fetching its councils + state bills and
+ * enriching them. Content-hashed caching makes re-warming cheap (only new or
+ * changed items cost an API call). Degrades to a no-op when AI is disabled.
+ */
+export async function warmCivicCaches(areas: AreaContext[]): Promise<WarmResult[]> {
+  const out: WarmResult[] = [];
+  for (const area of areas) {
+    const items = await fetchAreaItems(area);
+    const insights = await enrichAndCacheCivic(items, area);
+    out.push({ area: area.key, fetched: items.length, enriched: insights.size });
+  }
+  return out;
+}
 
 export const SOURCE_LABEL: Record<JurisdictionWatchKind, string> = {
   council: "King County Council (Legistar)",
@@ -44,10 +71,9 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
   const db = getDb();
   const items = await fetchItems(kind);
 
-  // AI enrichment (relevance + plain-language "why it matters") for both council
-  // and legislature, judged against the market area. Populates the cache the live
-  // feed reads; no-op when AI is disabled.
-  const insights: Map<string, CivicInsight> = await enrichAndCacheCivic(items, MARKET_AREA);
+  // Read the AI insights warmed by warmCivicCaches (judged against the market
+  // area) to gate alert relevance. Reading only — warming did the enrichment.
+  const insights: Map<string, CivicInsight> = await attachCachedInsights(items, MARKET_AREA.key);
 
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -109,16 +135,23 @@ export async function runWatchPoll(kind: JurisdictionWatchKind): Promise<PollRes
 }
 
 export interface AllWatchResults {
+  warmed: WarmResult[];
   jurisdiction: PollResult[];
   parcel: ParcelPollResult;
 }
 
-/** Run every watch — jurisdiction feeds then parcel state-diffs. */
+/**
+ * Run every watch. First WARM the AI cache for each area users have saved an
+ * address in (so their report feeds are enriched), then poll the jurisdiction
+ * feeds for alerts and the per-parcel state diffs.
+ */
 export async function runAllWatches(): Promise<AllWatchResults> {
+  const warmed = await warmCivicCaches(await getActiveAreas());
+
   const jurisdiction: PollResult[] = [];
   for (const kind of JURISDICTION_KINDS) {
     jurisdiction.push(await runWatchPoll(kind));
   }
   const parcel = await runParcelWatches();
-  return { jurisdiction, parcel };
+  return { warmed, jurisdiction, parcel };
 }

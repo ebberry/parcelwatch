@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { watches, alerts } from "@/db/schema";
 import { fetchLegistarMatters } from "./sources/legistar";
@@ -8,9 +8,35 @@ import {
   relevanceRank,
   type CivicInsight,
 } from "@/lib/ai/civic";
-import type { AreaContext } from "./area";
+import { resolveArea, type AreaContext } from "./area";
+import { getParcelCore } from "@/lib/parcels/service";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
 import type { WatchItem } from "./index";
+
+/** The launch market — always warmed so any Vashon report's feed is enriched. */
+const MARKET_AREA = resolveArea({ city: "VASHON" });
+
+/**
+ * The distinct civic areas to keep warm — derived from users' SAVED ADDRESSES
+ * (the parcels they've watched), plus the market default. The worker enriches
+ * each so every user's report feed is AI-ready in their own jurisdiction.
+ */
+export async function getActiveAreas(): Promise<AreaContext[]> {
+  const db = getDb();
+  const rows = await db
+    .selectDistinct({ parcelId: watches.parcelId })
+    .from(watches)
+    .where(and(eq(watches.active, true), isNotNull(watches.parcelId)));
+
+  const byKey = new Map<string, AreaContext>([[MARKET_AREA.key, MARKET_AREA]]);
+  for (const r of rows) {
+    if (!r.parcelId) continue;
+    const core = (await getParcelCore(r.parcelId)).value;
+    const area = resolveArea({ city: core?.city ?? null });
+    byKey.set(area.key, area);
+  }
+  return [...byKey.values()];
+}
 
 /** A civic item plus its cached AI insight (null when AI is off / not yet run). */
 export interface CivicFeedItem extends WatchItem {
@@ -24,21 +50,28 @@ export interface CivicFeedItem extends WatchItem {
  * sort most-relevant first. Without AI we fall back to the keyword-topic subset
  * (so a cold/no-key feed isn't a dump of 60 raw items).
  */
+/**
+ * Fetch all legislation that applies to an area — its councils (county + city)
+ * plus WA state bills — un-enriched. Shared by the display and the worker warmer.
+ */
+export async function fetchAreaItems(area: AreaContext): Promise<WatchItem[]> {
+  const councilFetches = area.councils.map((c) =>
+    fetchLegistarMatters(c.client, `${c.label} (Legistar)`, 60).catch(() => [] as WatchItem[]),
+  );
+  const legFetch = fetchNewBills(sinceDate())
+    .then(normalizeLegislature)
+    .catch(() => [] as WatchItem[]);
+  const groups = await Promise.all([...councilFetches, legFetch]);
+  return groups.flat();
+}
+
 export async function getCivicActivity(
   area: AreaContext,
   limit = 8,
 ): Promise<SourcedValue<CivicFeedItem[]>> {
   const label = [...area.councils.map((c) => c.label), "WA Legislature"].join(" · ");
   try {
-    const councilFetches = area.councils.map((c) =>
-      fetchLegistarMatters(c.client, `${c.label} (Legistar)`, 60).catch(() => [] as WatchItem[]),
-    );
-    const legFetch = fetchNewBills(sinceDate())
-      .then(normalizeLegislature)
-      .catch(() => [] as WatchItem[]);
-    const groups = await Promise.all([...councilFetches, legFetch]);
-    const items = groups.flat();
-
+    const items = await fetchAreaItems(area);
     const insights = await attachCachedInsights(items, area.key);
     let feed: CivicFeedItem[] = items.map((it) => ({
       ...it,
