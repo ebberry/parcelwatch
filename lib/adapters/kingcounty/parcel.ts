@@ -4,22 +4,34 @@ import {
   queryLayer,
   escapeArcgisLiteral,
   ArcgisError,
-  type ArcgisQueryResponse,
+  type ArcgisFeature,
 } from "./client";
 
 /**
  * King County parcel adapter — Slice 1 core.
  *
- * Source: the denormalized `property__parcel_address_area` layer (1722), which
- * joins parcel + address + assessor attributes in one query (verified
- * 2026-05-31, see /docs/data-sources.md). One fetch yields PIN, address,
- * coordinates, lot size, zoning, and present use.
+ * Primary source: the denormalized `property__parcel_address_area` layer (1722)
+ * on the OpenDataPortal (gisdata) host — PIN, address, coordinates, lot size,
+ * zoning, present use, and assessment, all in one query.
  *
- * Privacy: this layer carries NO owner-name field. We only read property /
- * built-environment attributes (see /docs/privacy.md).
+ * HOST FAILOVER: King County's gisdata host goes down periodically (verified
+ * 2026-06-01 — it 302-redirected every API call to its homepage). When the
+ * primary fails we fall back to the older `gismaps` host's KingCo_PropertyInfo
+ * Parcels layer (2), which carries the SAME field names. Lat/lon (absent there)
+ * is derived from the parcel polygon centroid so the hazard/neighborhood panels
+ * keep working; a few fields (legal description, tax year, levy) degrade to
+ * "not available". See /docs/data-sources.md.
+ *
+ * Privacy: neither layer carries an owner-name field (see /docs/privacy.md).
  */
 
 const PARCEL_ADDRESS_QUERY = `${KC_OPENDATA_BASE}/property__parcel_address_area/MapServer/1722/query`;
+
+/** Failover host/layer (older gismaps host). Same field names, subset of fields. */
+const GISMAPS_PARCEL_QUERY =
+  "https://gismaps.kingcounty.gov/arcgis/rest/services/Property/KingCo_PropertyInfo/MapServer/2/query";
+const FALLBACK_FIELDS =
+  "PIN,MAJOR,MINOR,ADDR_FULL,POSTALCTYNAME,CTYNAME,ZIP5,LOTSQFT,KCA_ACRES,KCA_ZONING,PREUSE_CODE,PREUSE_DESC,PROPTYPE,APPRLNDVAL,APPR_IMPR";
 
 const DETAIL_FIELDS = [
   "PIN",
@@ -180,6 +192,89 @@ export function eRealPropertyUrl(pin: string): string {
   return `https://blue.kingcounty.com/Assessor/eRealProperty/Detail.aspx?ParcelNbr=${encodeURIComponent(pin)}`;
 }
 
+/** Rough centroid of a polygon's first ring (geometry in WGS84). */
+function ringCentroid(geometry: unknown): { lat: number; lon: number } | null {
+  const ring = (geometry as { rings?: number[][][] } | null)?.rings?.[0];
+  if (!ring?.length) return null;
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y] of ring) {
+    sx += x;
+    sy += y;
+  }
+  return { lon: sx / ring.length, lat: sy / ring.length };
+}
+
+/** Map a gismaps-fallback feature into the full RawParcelAttributes shape. */
+function fromFallback(f: ArcgisFeature<Partial<RawParcelAttributes>>): RawParcelAttributes {
+  const a = f.attributes;
+  const c = ringCentroid(f.geometry);
+  return {
+    PIN: a.PIN ?? "",
+    MAJOR: a.MAJOR ?? null,
+    MINOR: a.MINOR ?? null,
+    ADDR_FULL: a.ADDR_FULL ?? null,
+    POSTALCTYNAME: a.POSTALCTYNAME ?? null,
+    CTYNAME: a.CTYNAME ?? null,
+    ZIP5: a.ZIP5 ?? null,
+    LAT: c?.lat ?? null,
+    LON: c?.lon ?? null,
+    LOTSQFT: a.LOTSQFT ?? null,
+    KCA_ACRES: a.KCA_ACRES ?? null,
+    KCA_ZONING: a.KCA_ZONING ?? null,
+    PREUSE_CODE: a.PREUSE_CODE ?? null,
+    PREUSE_DESC: a.PREUSE_DESC ?? null,
+    PROPTYPE: a.PROPTYPE ?? null,
+    LEGALDESC: null, // not on the fallback layer
+    PRIMARY_ADDR: null,
+    APPRLNDVAL: a.APPRLNDVAL ?? null,
+    APPR_IMPR: a.APPR_IMPR ?? null,
+    TAX_LNDVAL: null,
+    TAX_IMPR: null,
+    LEVYCODE: null,
+    LEVY_JURIS: null,
+    KCTP_TAXYR: null,
+    ACCNT_NUM: null,
+  };
+}
+
+/**
+ * Run a parcel query against the primary host; if it's down, transparently fall
+ * back to the gismaps host. Returns rows in the uniform RawParcelAttributes shape.
+ */
+async function queryParcels(opts: {
+  where: string;
+  primaryFields: string;
+  orderByFields?: string;
+  resultRecordCount?: number;
+  /** Derive lat/lon from polygon geometry on the fallback (needed for by-PIN). */
+  fallbackGeometry?: boolean;
+}): Promise<RawParcelAttributes[]> {
+  try {
+    const res = await queryLayer<RawParcelAttributes>({
+      queryUrl: PARCEL_ADDRESS_QUERY,
+      where: opts.where,
+      outFields: opts.primaryFields,
+      returnGeometry: false,
+      orderByFields: opts.orderByFields,
+      resultRecordCount: opts.resultRecordCount,
+    });
+    return (res.features ?? []).map((f) => f.attributes);
+  } catch {
+    // Primary (gisdata) unreachable — fall back to the gismaps host.
+    const res = await queryLayer<Partial<RawParcelAttributes>>({
+      queryUrl: GISMAPS_PARCEL_QUERY,
+      where: opts.where,
+      outFields: FALLBACK_FIELDS,
+      returnGeometry: Boolean(opts.fallbackGeometry),
+      outSR: opts.fallbackGeometry ? "4326" : undefined,
+      orderByFields: opts.orderByFields,
+      resultRecordCount: opts.resultRecordCount,
+    });
+    return (res.features ?? []).map(fromFallback);
+  }
+}
+
 export const kingCountyParcelAdapter: DataSourceAdapter<
   RawParcelAttributes,
   ParcelCore
@@ -194,13 +289,13 @@ export const kingCountyParcelAdapter: DataSourceAdapter<
     if (!pin || !PIN_RE.test(pin)) {
       throw new ArcgisError(`Invalid King County PIN: ${pin ?? "(none)"}`);
     }
-    const res = await queryLayer<RawParcelAttributes>({
-      queryUrl: PARCEL_ADDRESS_QUERY,
+    const rows = await queryParcels({
       where: `PIN='${escapeArcgisLiteral(pin)}'`,
-      outFields: DETAIL_FIELDS,
-      returnGeometry: false,
+      primaryFields: DETAIL_FIELDS,
+      fallbackGeometry: true, // derive lat/lon from geometry if we fail over
     });
-    const feature = pickPrimary(res);
+    // Prefer the primary-address row (only present on the primary layer).
+    const feature = rows.find((r) => r.PRIMARY_ADDR === 1) ?? rows[0];
     if (!feature) {
       throw new ArcgisError(`No King County parcel found for PIN ${pin}`);
     }
@@ -228,21 +323,11 @@ export const kingCountyParcelAdapter: DataSourceAdapter<
   },
 };
 
-/** Prefer the primary-address row for a PIN; fall back to the first feature. */
-function pickPrimary(
-  res: ArcgisQueryResponse<RawParcelAttributes>,
-): RawParcelAttributes | null {
-  const features = res.features ?? [];
-  if (!features.length) return null;
-  const primary = features.find((f) => f.attributes.PRIMARY_ADDR === 1);
-  return (primary ?? features[0]).attributes;
-}
-
 /**
  * Address search — the "confirm the parcel" step. Returns candidates the user
  * picks from. Not a DataSourceAdapter (it resolves an address to parcels rather
- * than fetching one parcel's facts). Returns [] on no match; throws ArcgisError
- * if the source is unreachable (callers degrade gracefully).
+ * than fetching one parcel's facts). Returns [] on no match; throws if BOTH the
+ * primary and fallback hosts are unreachable (callers degrade gracefully).
  */
 export async function searchParcelsByAddress(
   rawQuery: string,
@@ -250,19 +335,16 @@ export async function searchParcelsByAddress(
   const term = sanitizeAddressTerm(rawQuery);
   if (!term) return [];
 
-  const res = await queryLayer<RawParcelAttributes>({
-    queryUrl: PARCEL_ADDRESS_QUERY,
+  const rows = await queryParcels({
     where: `ADDR_FULL LIKE '%${escapeArcgisLiteral(term)}%'`,
-    outFields: SEARCH_FIELDS,
-    returnGeometry: false,
+    primaryFields: SEARCH_FIELDS,
     orderByFields: "ADDR_FULL",
     resultRecordCount: 25,
   });
 
   // Dedupe by PIN, preferring the primary-address row.
   const byPin = new Map<string, ParcelCandidate>();
-  for (const f of res.features ?? []) {
-    const a = f.attributes;
+  for (const a of rows) {
     const existing = byPin.get(a.PIN);
     if (existing && a.PRIMARY_ADDR !== 1) continue;
     byPin.set(a.PIN, {

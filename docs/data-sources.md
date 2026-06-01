@@ -11,9 +11,27 @@ it. This file records what was confirmed and when. Re-verify before each slice.
 
 King County migrated GIS to a new host. Use the new base; the old one is being retired.
 
-- ✅ **Current base:** `https://gisdata.kingcounty.gov/arcgis/rest/services/OpenDataPortal/`
-- ⛔ **Deprecated:** `https://gismaps.kingcounty.gov/arcgis/rest/services/...` (do not use)
+- ✅ **Primary base:** `https://gisdata.kingcounty.gov/arcgis/rest/services/OpenDataPortal/`
+- ♻️ **Failover host:** `https://gismaps.kingcounty.gov/arcgis/rest/services/...` (see below)
 - ArcGIS `currentVersion`: **10.91**. Append `?f=json` to any service/layer URL to inspect.
+
+### ⚠️ Host failover (the gisdata host goes down — 2026-06-01)
+
+`gisdata.kingcounty.gov` went down on 2026-06-01: every `/arcgis/rest/...` request
+302-redirected to the homepage (so `res.json()` failed). The app now **fails over**
+to the older `gismaps` host, which was back up with the SAME parcel data:
+
+- Fallback layer: `Property/KingCo_PropertyInfo/MapServer/2` (Parcels). Same field
+  names (`PIN`, `ADDR_FULL`, `KCA_ZONING`, `LOTSQFT`, `APPRLNDVAL`, `APPR_IMPR`, …).
+- **Missing on the fallback** (degrade to "not available"): `LAT`/`LON` (derived
+  from the parcel polygon centroid, `outSR=4326`, so hazard/neighborhood panels
+  keep working), `LEGALDESC`, and the tax sub-fields (`KCTP_TAXYR`, `LEVY*`,
+  `TAX_*`, `ACCNT_NUM`).
+- Implemented in `lib/adapters/kingcounty/parcel.ts` (`queryParcels` tries primary,
+  catches, retries against gismaps). Search + parcel-by-PIN both fail over;
+  comparables (appeals) gracefully show "unavailable" during an outage.
+- The lesson the brief warned about: **government endpoints change/flap — never
+  hardcode a single host.**
 
 ### ⭐ Slice 1 anchor — `property__parcel_address_area` (MapServer), layer **1722**
 

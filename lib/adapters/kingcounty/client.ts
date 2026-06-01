@@ -43,6 +43,8 @@ interface QueryOptions {
   where: string;
   outFields: string;
   returnGeometry?: boolean;
+  /** Output spatial reference (e.g. "4326" to get lat/lon geometry back). */
+  outSR?: string;
   orderByFields?: string;
   resultRecordCount?: number;
   /** Optional point + radius buffer (intersects within `distanceMeters`). */
@@ -61,6 +63,7 @@ export async function queryLayer<A>(
     returnGeometry: String(opts.returnGeometry ?? false),
     f: "json",
   });
+  if (opts.outSR) params.set("outSR", opts.outSR);
   if (opts.orderByFields) params.set("orderByFields", opts.orderByFields);
   if (opts.resultRecordCount != null) {
     params.set("resultRecordCount", String(opts.resultRecordCount));
@@ -95,7 +98,15 @@ export async function queryLayer<A>(
     throw new ArcgisError(`King County returned HTTP ${res.status}`, res.status);
   }
 
-  const json = (await res.json()) as ArcgisQueryResponse<A>;
+  // When the host is down it 302-redirects to an HTML homepage; res.json()
+  // would throw a confusing SyntaxError. Surface it as an ArcgisError so callers
+  // (and the host failover) can catch it cleanly.
+  let json: ArcgisQueryResponse<A>;
+  try {
+    json = (await res.json()) as ArcgisQueryResponse<A>;
+  } catch {
+    throw new ArcgisError("King County returned a non-JSON response (service may be down or redirecting)");
+  }
   // ArcGIS returns 200 with an embedded error object on bad queries.
   if (json.error) {
     throw new ArcgisError(json.error.message, json.error.code);
