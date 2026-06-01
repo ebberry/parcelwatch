@@ -31,12 +31,14 @@ if [ "$need_install" = 1 ]; then
   if command -v apt-get >/dev/null 2>&1; then
     say "Installing prerequisites with apt (Debian/Ubuntu)..."
     sudo apt-get update -y
-    sudo apt-get install -y git docker.io docker-compose-plugin python3 openssl curl
+    sudo apt-get install -y git docker.io docker-compose-plugin python3 openssl
     sudo systemctl enable --now docker 2>/dev/null || true
   elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
     PKG=dnf; command -v dnf >/dev/null 2>&1 || PKG=yum
     say "Installing prerequisites with $PKG (Amazon Linux / RHEL)..."
-    sudo "$PKG" install -y git docker python3 openssl curl
+    # NOTE: do NOT install 'curl' here — Amazon Linux ships curl-minimal which
+    # already provides it, and adding full curl causes a package conflict.
+    sudo "$PKG" install -y git docker python3 openssl
     sudo systemctl enable --now docker
     if ! docker compose version >/dev/null 2>&1; then
       say "Installing the Docker Compose v2 plugin..."
