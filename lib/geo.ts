@@ -10,6 +10,21 @@ export function milesToKm(mi: number): number {
   return mi * KM_PER_MILE;
 }
 
+/** Rough centroid of a polygon's first ring (geometry in WGS84). */
+export function polygonRingCentroid(
+  geometry: unknown,
+): { lat: number; lon: number } | null {
+  const ring = (geometry as { rings?: number[][][] } | null)?.rings?.[0];
+  if (!ring?.length) return null;
+  let sx = 0;
+  let sy = 0;
+  for (const [x, y] of ring) {
+    sx += x;
+    sy += y;
+  }
+  return { lon: sx / ring.length, lat: sy / ring.length };
+}
+
 /** Great-circle distance between two WGS84 points, in kilometers. */
 export function haversineKm(
   aLat: number,

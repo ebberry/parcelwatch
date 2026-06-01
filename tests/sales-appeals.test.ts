@@ -1,0 +1,173 @@
+import { describe, it, expect } from "vitest";
+import { buildSaleCompSet } from "@/lib/sales/service";
+import {
+  buildMarketValueNarrative,
+  buildRecentPurchaseNarrative,
+  buildAppealNarrative,
+} from "@/lib/appeals";
+import type { ParcelCore } from "@/lib/adapters/kingcounty/parcel";
+import type { RawSale } from "@/lib/adapters/kingcounty/sales";
+
+function subject(overrides: Partial<ParcelCore> = {}): ParcelCore {
+  return {
+    pin: "0000000001",
+    address: "1 SUBJECT ST",
+    city: "VASHON",
+    zip: "98070",
+    lat: 47.331,
+    lon: -122.5,
+    lotSqFt: 44066,
+    acres: 1.01,
+    zoningCode: "RA-2.5",
+    presentUseCode: 2,
+    presentUse: "Single Family(Res Use/Zone)",
+    propertyType: "R",
+    legalDescription: null,
+    assessment: {
+      appraisedLand: 414000,
+      appraisedImprovement: 658000,
+      appraisedTotal: 1072000,
+      taxableLand: 414000,
+      taxableImprovement: 658000,
+      taxableTotal: 1072000,
+      taxYear: 2026,
+      levyCode: "4045",
+      levyJurisdiction: "KING COUNTY",
+      accountNumber: "012102900805",
+    },
+    ...overrides,
+  };
+}
+
+const sale = (
+  pin: string,
+  salePrice: number,
+  saleDate: string,
+  over: Partial<RawSale> = {},
+): RawSale => ({
+  pin,
+  address: `${pin} SALE RD`,
+  saleDate,
+  salePrice,
+  propertyType: "NA",
+  principalUse: "RESIDENTIAL",
+  propertyClass: "Res-Improved property",
+  improved: true,
+  lat: 47.3315,
+  lon: -122.5005,
+  ...over,
+});
+
+describe("buildSaleCompSet", () => {
+  it("flags appearsHigh when assessed exceeds the comparable-sale median", () => {
+    const set = buildSaleCompSet(subject(), [
+      sale("a", 700000, "2025-08-13"),
+      sale("b", 720000, "2025-06-10"),
+      sale("c", 680000, "2024-11-02"),
+    ]);
+    expect(set.comps).toHaveLength(3);
+    expect(set.medianSalePrice).toBe(700000);
+    expect(set.assessedVsMedianSalePct).toBeGreaterThan(40);
+    expect(set.appearsHigh).toBe(true);
+    expect(set.earliestSale).toBe("2024-11-02");
+    expect(set.latestSale).toBe("2025-08-13");
+  });
+
+  it("does not flag a subject in line with comparable sales", () => {
+    const set = buildSaleCompSet(subject(), [
+      sale("a", 1050000, "2025-08-13"),
+      sale("b", 1100000, "2025-06-10"),
+      sale("c", 1020000, "2024-11-02"),
+    ]);
+    expect(set.appearsHigh).toBe(false);
+  });
+
+  it("drops non-residential sales for a residential subject", () => {
+    const set = buildSaleCompSet(subject(), [
+      sale("res", 700000, "2025-08-13"),
+      sale("comm", 650000, "2025-07-01", { principalUse: "COMMERCIAL" }),
+    ]);
+    expect(set.comps.map((c) => c.pin)).toEqual(["res"]);
+  });
+
+  it("derives the subject's recent purchase from its own sale history", () => {
+    const set = buildSaleCompSet(
+      subject(),
+      [sale("a", 700000, "2025-08-13")],
+      [
+        sale("0000000001", 820000, "2024-09-15"),
+        sale("0000000001", 500000, "2015-03-01"),
+      ],
+    );
+    expect(set.subjectSale?.salePrice).toBe(820000);
+    expect(set.subjectSale?.saleDate).toBe("2024-09-15");
+    // (1072000 - 820000) / 1072000 ≈ 24%
+    expect(set.subjectSale?.belowAssessedPct).toBe(24);
+  });
+
+  it("ignores sales with missing price or date", () => {
+    const set = buildSaleCompSet(subject(), [
+      sale("ok", 700000, "2025-08-13"),
+      sale("noprice", 0, "2025-01-01", { salePrice: null }),
+      sale("nodate", 690000, "2025-01-01", { saleDate: null }),
+    ]);
+    expect(set.comps.map((c) => c.pin)).toEqual(["ok"]);
+  });
+});
+
+describe("sales narratives", () => {
+  it("writes a market-value paragraph only when assessed appears high", () => {
+    const high = buildSaleCompSet(subject(), [
+      sale("a", 700000, "2025-08-13"),
+      sale("b", 720000, "2025-06-10"),
+      sale("c", 680000, "2024-11-02"),
+    ]);
+    const text = buildMarketValueNarrative(high);
+    expect(text).toMatch(/true and fair market value/);
+    expect(text).toMatch(/RCW 84\.40\.0301/);
+
+    const inline = buildSaleCompSet(subject(), [
+      sale("a", 1050000, "2025-08-13"),
+      sale("b", 1100000, "2025-06-10"),
+    ]);
+    expect(buildMarketValueNarrative(inline)).toBeNull();
+  });
+
+  it("writes a recent-purchase paragraph when the owner bought below assessed", () => {
+    const set = buildSaleCompSet(
+      subject(),
+      [sale("a", 700000, "2025-08-13")],
+      [sale("0000000001", 820000, "2024-09-15")],
+    );
+    const text = buildRecentPurchaseNarrative(set);
+    expect(text).toMatch(/last sold in September 2024/);
+    expect(text).toMatch(/\$820,000/);
+  });
+
+  it("assembles a combined narrative with the implied reason checkboxes", () => {
+    const set = buildSaleCompSet(
+      subject(),
+      [
+        sale("a", 700000, "2025-08-13"),
+        sale("b", 720000, "2025-06-10"),
+        sale("c", 680000, "2024-11-02"),
+      ],
+      [sale("0000000001", 820000, "2024-09-15")],
+    );
+    const { text, reasons } = buildAppealNarrative({ comp: null, sale: set });
+    expect(reasons).toContain("market");
+    expect(reasons).toContain("purchase");
+    expect(text).toMatch(/last sold/);
+    expect(text).toMatch(/comparable properties/);
+  });
+
+  it("produces no narrative and no reasons when nothing supports an appeal", () => {
+    const inline = buildSaleCompSet(subject(), [
+      sale("a", 1050000, "2025-08-13"),
+      sale("b", 1100000, "2025-06-10"),
+    ]);
+    const { text, reasons } = buildAppealNarrative({ comp: null, sale: inline });
+    expect(text).toBeNull();
+    expect(reasons).toEqual([]);
+  });
+});

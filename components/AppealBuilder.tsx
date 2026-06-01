@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { ProvenanceBadge } from "@/components/ProvenanceBadge";
 import { APPEAL_REASONS } from "@/lib/appeals";
+import { kmToMiles } from "@/lib/geo";
 import type { Confidence } from "@/lib/provenance";
 import type { CompSet } from "@/lib/comps/service";
+import type { SaleCompSet } from "@/lib/sales/service";
 
 interface ParcelFacts {
   pin: string;
@@ -15,30 +17,55 @@ interface ParcelFacts {
   taxYear: number | null;
 }
 
+interface Provenance {
+  source: string;
+  fetchedAt: string | null;
+  confidence: Confidence;
+}
+
 const usd = (n: number | null | undefined) =>
   n == null ? "—" : `$${Math.round(n).toLocaleString("en-US")}`;
+
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+function fmtDate(iso: string | null): string {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-").map(Number);
+  return m >= 1 && m <= 12 ? `${MONTHS[m - 1]} ${d}, ${y}` : String(y);
+}
+function fmtMiles(km: number | null): string {
+  if (km == null) return "—";
+  const mi = kmToMiles(km);
+  return mi < 0.1 ? "<0.1 mi" : `${mi.toFixed(1)} mi`;
+}
 
 export function AppealBuilder({
   parcel,
   comp,
   compProvenance,
+  sale,
+  saleProvenance,
   suggestedNarrative,
+  suggestedReasons,
   eAppealsUrl,
   boeFormsUrl,
 }: {
   parcel: ParcelFacts;
   comp: CompSet | null;
-  compProvenance: { source: string; fetchedAt: string | null; confidence: Confidence };
+  compProvenance: Provenance;
+  sale: SaleCompSet | null;
+  saleProvenance: Provenance;
   suggestedNarrative: string | null;
+  suggestedReasons: string[];
   eAppealsUrl: string;
   boeFormsUrl: string;
 }) {
   const [ownerName, setOwnerName] = useState("");
   const [contact, setContact] = useState("");
   const [opinion, setOpinion] = useState("");
-  const [reasons, setReasons] = useState<Set<string>>(
-    new Set(suggestedNarrative ? ["uniformity"] : []),
-  );
+  const [reasons, setReasons] = useState<Set<string>>(new Set(suggestedReasons));
   const [explanation, setExplanation] = useState(suggestedNarrative ?? "");
 
   function toggleReason(key: string) {
@@ -53,11 +80,100 @@ export function AppealBuilder({
     (r) => r.label,
   );
 
+  const saleComps = sale?.comps ?? [];
+
   return (
     <div className="mt-6">
-      {/* Comparable-assessment evidence */}
-      {comp && (
+      {/* Comparable SALES evidence (market value — strongest argument) */}
+      {sale && (saleComps.length > 0 || sale.subjectSale) && (
         <section className="no-print rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
+          <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-[15px] font-medium text-pw-ink">Comparable sales</h2>
+            <ProvenanceBadge {...saleProvenance} />
+          </div>
+
+          {sale.subjectSale && (
+            <p className="mb-3 rounded-lg border-[0.5px] border-pw-border bg-pw-inset px-3 py-2 text-sm text-pw-sub">
+              This property last sold in{" "}
+              <span className="font-medium text-pw-ink">{fmtDate(sale.subjectSale.saleDate)}</span> for{" "}
+              <span className="font-medium text-pw-ink">{usd(sale.subjectSale.salePrice)}</span>
+              {sale.subjectSale.belowAssessedPct != null &&
+                sale.subjectSale.belowAssessedPct >= 5 && (
+                  <>
+                    {" "}— about{" "}
+                    <span className="font-medium text-pw-amber">
+                      {sale.subjectSale.belowAssessedPct}% below
+                    </span>{" "}
+                    the assessed value. A recent purchase price is strong appeal evidence.
+                  </>
+                )}
+            </p>
+          )}
+
+          {saleComps.length > 0 && (
+            <>
+              <p className="text-sm text-pw-sub">
+                {sale.appearsHigh ? (
+                  <>
+                    The assessed value of {usd(sale.subjectAssessedTotal)} is about{" "}
+                    <span className="font-medium text-pw-amber">
+                      {sale.assessedVsMedianSalePct}% above
+                    </span>{" "}
+                    the median of {saleComps.length} recent comparable sales nearby
+                    ({usd(sale.medianSalePrice)}) — which may support an appeal.
+                  </>
+                ) : (
+                  <>
+                    The assessed value of {usd(sale.subjectAssessedTotal)} is{" "}
+                    {sale.assessedVsMedianSalePct != null ? (
+                      <span className="font-medium">
+                        {sale.assessedVsMedianSalePct > 0 ? "+" : ""}
+                        {sale.assessedVsMedianSalePct}% vs
+                      </span>
+                    ) : (
+                      "in line with"
+                    )}{" "}
+                    the median of {saleComps.length} recent comparable sales nearby
+                    ({usd(sale.medianSalePrice)}).
+                  </>
+                )}
+              </p>
+
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-pw-border text-pw-faint">
+                      <th className="py-1 font-medium">Sold</th>
+                      <th className="py-1 font-medium">Address</th>
+                      <th className="py-1 text-right font-medium">Price</th>
+                      <th className="py-1 text-right font-medium">Distance</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {saleComps.map((c) => (
+                      <tr key={c.pin} className="border-b border-pw-border/50">
+                        <td className="py-1.5 tabular-nums text-pw-sub">{fmtDate(c.saleDate)}</td>
+                        <td className="py-1.5 text-pw-ink">{c.address ?? c.pin}</td>
+                        <td className="py-1.5 text-right tabular-nums text-pw-ink">{usd(c.salePrice)}</td>
+                        <td className="py-1.5 text-right tabular-nums text-pw-sub">{fmtMiles(c.distanceKm)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="mt-2 text-xs text-pw-faint">
+                Recorded arm&apos;s-length sales of the same use within about a mile,
+                last 3 years. Not adjusted for building size or condition — a market
+                screen, not a formal appraisal.
+              </p>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Comparable-assessment evidence (uniformity argument) */}
+      {comp && (
+        <section className="no-print mt-4 rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-[15px] font-medium text-pw-ink">Comparable assessments</h2>
             <ProvenanceBadge {...compProvenance} />
@@ -113,12 +229,6 @@ export function AppealBuilder({
         <label className="text-sm">
           <span className="mb-1 block text-pw-sub">
             Your opinion of the property&apos;s value
-            {comp?.medianAssessedTotal != null && (
-              <span className="text-pw-faint">
-                {" "}
-                (comparable median: {usd(comp.medianAssessedTotal)})
-              </span>
-            )}
           </span>
           <input
             value={opinion}
@@ -127,6 +237,29 @@ export function AppealBuilder({
             placeholder="$"
             className="w-full rounded-lg border-[0.5px] border-pw-border bg-pw-card px-3 py-2 text-pw-ink"
           />
+          {(sale?.medianSalePrice != null || comp?.medianAssessedTotal != null) && (
+            <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-pw-faint">
+              <span>Reference points:</span>
+              {sale?.medianSalePrice != null && (
+                <button
+                  type="button"
+                  onClick={() => setOpinion(String(Math.round(sale.medianSalePrice!)))}
+                  className="rounded border-[0.5px] border-pw-border px-2 py-0.5 text-pw-green hover:bg-pw-accent/10"
+                >
+                  Comparable sales median {usd(sale.medianSalePrice)}
+                </button>
+              )}
+              {comp?.medianAssessedTotal != null && (
+                <button
+                  type="button"
+                  onClick={() => setOpinion(String(Math.round(comp.medianAssessedTotal!)))}
+                  className="rounded border-[0.5px] border-pw-border px-2 py-0.5 text-pw-green hover:bg-pw-accent/10"
+                >
+                  Comparable assessment median {usd(comp.medianAssessedTotal)}
+                </button>
+              )}
+            </span>
+          )}
         </label>
 
         <fieldset className="text-sm">
@@ -153,11 +286,28 @@ export function AppealBuilder({
           <textarea
             value={explanation}
             onChange={(e) => setExplanation(e.target.value)}
-            rows={6}
+            rows={8}
             className="w-full rounded-lg border-[0.5px] border-pw-border bg-pw-card px-3 py-2 text-pw-ink"
           />
         </label>
       </form>
+
+      {/* Evidence checklist — what strengthens the appeal */}
+      <section className="no-print mt-6 rounded-xl border-[0.5px] border-pw-border bg-pw-inset p-5">
+        <h2 className="text-[15px] font-medium text-pw-ink">Evidence to attach</h2>
+        <p className="mt-1 text-sm text-pw-sub">
+          The Board weighs evidence of market value. The comparable sales and
+          assessments above are already in your petition. These strengthen it
+          further — attach what applies (none are required):
+        </p>
+        <ul className="mt-2 ml-5 list-disc text-sm text-pw-sub">
+          <li>Your closing/settlement statement, if you bought recently.</li>
+          <li>A recent independent appraisal or broker price opinion.</li>
+          <li>Photos documenting condition issues, damage, or deferred maintenance.</li>
+          <li>Contractor estimates for needed repairs.</li>
+          <li>Corrections to the county record (wrong square footage, bedrooms, etc.).</li>
+        </ul>
+      </section>
 
       {/* Petition preview (this is what prints) */}
       <div className="print-area mt-8 rounded-xl border border-gray-300 p-6">
@@ -180,7 +330,7 @@ export function AppealBuilder({
         <PetitionRow label="Assessment / tax year" value={parcel.taxYear?.toString() ?? "—"} />
 
         <h3 className="mt-4 font-semibold">Taxpayer&apos;s opinion of value</h3>
-        <PetitionRow label="Your estimate of value" value={opinion || "—"} />
+        <PetitionRow label="Your estimate of value" value={opinion ? usd(Number(opinion.replace(/[^0-9.]/g, ""))) : "—"} />
 
         <h3 className="mt-4 font-semibold">Reasons</h3>
         {checkedLabels.length ? (
@@ -196,6 +346,47 @@ export function AppealBuilder({
         <h3 className="mt-4 font-semibold">Explanation &amp; evidence</h3>
         <p className="whitespace-pre-wrap text-sm">{explanation || "—"}</p>
 
+        {/* Comparable sales schedule */}
+        {saleComps.length > 0 && (
+          <>
+            <h3 className="mt-4 font-semibold">
+              Comparable sales (within ~1 mile, same use, last 3 years)
+            </h3>
+            <table className="mt-1 w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-gray-300 text-pw-faint">
+                  <th className="py-1">Sale date</th>
+                  <th className="py-1">Address</th>
+                  <th className="py-1 text-right">Sale price</th>
+                  <th className="py-1 text-right">Distance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {saleComps.map((c) => (
+                  <tr key={c.pin} className="border-b border-gray-100">
+                    <td className="py-1 tabular-nums">{fmtDate(c.saleDate)}</td>
+                    <td className="py-1">{c.address ?? c.pin}</td>
+                    <td className="py-1 text-right tabular-nums">{usd(c.salePrice)}</td>
+                    <td className="py-1 text-right tabular-nums">{fmtMiles(c.distanceKm)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-1 text-xs text-pw-faint">
+              Source: {saleProvenance.source}. Median sale ≈ {usd(sale?.medianSalePrice)}
+              {sale?.lowSalePrice != null && sale?.highSalePrice != null && (
+                <> (range {usd(sale.lowSalePrice)}–{usd(sale.highSalePrice)})</>
+              )}
+              . Assessed value {usd(parcel.total)}
+              {sale?.assessedVsMedianSalePct != null && (
+                <> ({sale.assessedVsMedianSalePct > 0 ? "+" : ""}{sale.assessedVsMedianSalePct}% vs median sale)</>
+              )}
+              . Recorded sales, not size/condition-adjusted.
+            </p>
+          </>
+        )}
+
+        {/* Comparable assessments schedule */}
         {comp && comp.comps.length > 0 && (
           <>
             <h3 className="mt-4 font-semibold">

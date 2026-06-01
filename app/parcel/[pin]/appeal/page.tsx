@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getParcelCore } from "@/lib/parcels/service";
 import { getComparables } from "@/lib/comps/service";
-import { buildUniformityNarrative, EAPPEALS_URL, BOE_FORMS_URL } from "@/lib/appeals";
+import { getSaleComps } from "@/lib/sales/service";
+import { buildAppealNarrative, EAPPEALS_URL, BOE_FORMS_URL } from "@/lib/appeals";
 import { titleCaseAddress } from "@/lib/format";
 import { AppealBuilder } from "@/components/AppealBuilder";
 
@@ -35,9 +36,13 @@ export default async function AppealPage({
     );
   }
 
-  const compSv = await getComparables(p);
+  const [compSv, saleSv] = await Promise.all([
+    getComparables(p),
+    getSaleComps(p),
+  ]);
   const comp = compSv.value;
-  const narrative = comp ? buildUniformityNarrative(comp) : null;
+  const sale = saleSv.value;
+  const narrative = buildAppealNarrative({ comp, sale });
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-10">
@@ -72,7 +77,14 @@ export default async function AppealPage({
           fetchedAt: compSv.fetchedAt,
           confidence: compSv.confidence,
         }}
-        suggestedNarrative={narrative}
+        sale={sale}
+        saleProvenance={{
+          source: saleSv.source,
+          fetchedAt: saleSv.fetchedAt,
+          confidence: saleSv.confidence,
+        }}
+        suggestedNarrative={narrative.text}
+        suggestedReasons={narrative.reasons}
         eAppealsUrl={EAPPEALS_URL}
         boeFormsUrl={BOE_FORMS_URL}
       />

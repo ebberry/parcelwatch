@@ -161,13 +161,33 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - **EPA Envirofacts** — no clean radius/point query; needs FRS geospatial work.
 - **WA Dept of Ecology** (shoreline/critical areas) and **WA DOH** drinking-water (Sentry).
 
-## Appeals feature (verified 2026-05-31)
+## Appeals feature (verified 2026-05-31; sales added 2026-06-01)
 
 - **Comparable assessments:** layer 1722 distance query — `geometry` (point) +
   `distance` + `units=esriSRUnit_Meter` + `spatialRel=esriSpatialRelIntersects`,
   `where=PREUSE_CODE=<n> AND PRIMARY_ADDR=1 AND APPR_IMPR>0 AND LOTSQFT>0 AND PIN<>'<subject>'`.
-  Returns nearby same-use parcels with assessed values + LAT/LON. (Not sales —
-  no live KC sales API; that's a bulk-roll follow-up.)
+  Returns nearby same-use parcels with assessed values + LAT/LON.
+  ♻️ **Host failover (2026-06-01):** when gisdata is down, `searchComparables`
+  retries the gismaps `KingCo_PropertyInfo/MapServer/2` Parcels layer (same
+  attribute fields, no `PRIMARY_ADDR`/`LAT`/`LON` — coords derived from the
+  polygon centroid, deduped by PIN). So uniformity evidence survives an outage.
+- ⭐ **Comparable SALES (NEW 2026-06-01):** `KingCo_PropertyInfo/MapServer/3`
+  ("Property sales in the last 3 years") — real recorded excise sales.
+  - Hosts (failover, try in order): `gisdata...` then
+    `https://gismaps.kingcounty.gov/arcgis/rest/services/Property/KingCo_PropertyInfo/MapServer/3/query`.
+  - Radius query: point+distance buffer, `where=SalePrice>=25000 AND ForestLand='N'
+    AND CurrentUseLand='N' AND NonProfitUse='N'` (drops non-market transfers),
+    `orderByFields=SaleDate DESC`, `returnGeometry=true&outSR=4326` (centroid →
+    distance + the hazard panels). Subject sale history = same layer `where=PIN='…'`.
+  - Fields used: `PIN, address, SaleDate (epoch ms), SalePrice, Property_Type,
+    Principal_Use, Property_Class` (improved-vs-land), plus the 3 exclusion flags.
+  - 🔒 **Privacy:** this layer ALSO carries `buyername`/`Sellername`/addresses —
+    we request NONE of those (built-environment facts only; RCW 42.56.070(9)).
+  - ⚠️ **Limitation:** no living-area sqft in any keyless live layer, so sales are
+    NOT size/condition-adjusted — surfaced as a market screen, never an appraisal.
+    Living-area $/sqft would need the Assessor bulk EXTR_ResBldg (a follow-up).
+  - Verified live 2026-06-01: 9 sales within 800 m of the Vashon test parcel,
+    prices $495k–$915k, dates 2022–2025.
 - **eAppeals portal (file online, owner login):** `https://blue.kingcounty.gov/assessor/eappeals/RPLookup.aspx` (200 OK).
 - **BOE petition forms (mail filing):** `https://kingcounty.gov/en/independents/governance-and-leadership/government-oversight/board-appeals-equalization/appeals-forms` (200 OK).
 - Deadline rule (computed): 60 days from value notice or July 1, whichever later.
@@ -224,7 +244,9 @@ Postgres (`watches`, `watch_seen`, `alerts`); **BullMQ** scheduler (`npm run wor
 
 - [ ] WA Legislature: in-session incremental polling (GetLegislationIntroducedSince) + per-bill titles.
 - [ ] WA Ecology cleanup sites — proper footprint + projection handling (Tacoma Smelter Plume affects Vashon).
-- [ ] King County real-property **sales** source (bulk EXTR_RPSale) for sale-based comps.
+- [x] King County real-property **sales** for sale-based comps — ✅ live via
+      `KingCo_PropertyInfo/MapServer/3` (last 3 years). Bulk EXTR_ResBldg still a
+      follow-up for living-area $/sqft (size-adjusted comps).
 - [ ] EPA FRS geospatial endpoint + WA Ecology/DOH (Slice 3b).
 - [ ] Urban R-zone dimensional standards (when extending the zoning engine).
 - [ ] Zoning layer 450 field names (authoritative-zoning cross-check).
