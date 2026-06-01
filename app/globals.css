@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+/* Visible focus for keyboard users (WCAG 2.1 AA). */
+:focus-visible {
+  outline: 2px solid #0369a1;
+  outline-offset: 2px;
+}

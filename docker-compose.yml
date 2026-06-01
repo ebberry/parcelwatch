@@ -1,0 +1,29 @@
+# Local dev infrastructure for ParcelWatch.
+# Not required for Phase 0 (the app runs empty without these). Needed from
+# Slice 1 onward for caching + parcel persistence. Requires a container runtime
+# (Docker Desktop or Colima) — see README. Nothing here is a paid/cloud resource.
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: parcelwatch
+      POSTGRES_PASSWORD: parcelwatch
+      POSTGRES_DB: parcelwatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U parcelwatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
