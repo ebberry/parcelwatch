@@ -19,16 +19,40 @@ COMPOSE="docker compose --env-file $ENVF -f deploy/docker-compose.yml"
 say() { printf "\n\033[1;32m==>\033[0m %s\n" "$1"; }
 
 # ---------------------------------------------------------------------------
-# 1. Docker
+# 1. Prerequisites — Docker + compose + git + python3 + openssl (OS-aware)
 # ---------------------------------------------------------------------------
-if ! command -v docker >/dev/null 2>&1; then
-  say "Installing Docker, compose, git, openssl (sudo)..."
-  sudo apt-get update -y
-  sudo apt-get install -y docker.io docker-compose-plugin git openssl
-  sudo usermod -aG docker "$USER" || true
+need_install=0
+command -v docker >/dev/null 2>&1 || need_install=1
+docker compose version >/dev/null 2>&1 || need_install=1
+command -v git >/dev/null 2>&1 || need_install=1
+command -v python3 >/dev/null 2>&1 || need_install=1
+
+if [ "$need_install" = 1 ]; then
+  if command -v apt-get >/dev/null 2>&1; then
+    say "Installing prerequisites with apt (Debian/Ubuntu)..."
+    sudo apt-get update -y
+    sudo apt-get install -y git docker.io docker-compose-plugin python3 openssl curl
+    sudo systemctl enable --now docker 2>/dev/null || true
+  elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+    PKG=dnf; command -v dnf >/dev/null 2>&1 || PKG=yum
+    say "Installing prerequisites with $PKG (Amazon Linux / RHEL)..."
+    sudo "$PKG" install -y git docker python3 openssl curl
+    sudo systemctl enable --now docker
+    if ! docker compose version >/dev/null 2>&1; then
+      say "Installing the Docker Compose v2 plugin..."
+      ARCH="$(uname -m)"   # x86_64 or aarch64 — matches the release asset names
+      sudo mkdir -p /usr/libexec/docker/cli-plugins
+      sudo curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${ARCH}" \
+        -o /usr/libexec/docker/cli-plugins/docker-compose
+      sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+    fi
+  else
+    echo "Could not find apt or dnf/yum. Install git, docker, and the docker compose plugin manually, then re-run."
+    exit 1
+  fi
+  sudo usermod -aG docker "$USER" 2>/dev/null || true
 fi
 # Use sudo for docker so it works before the group membership takes effect.
-DOCKER="sudo docker"
 COMPOSE="sudo $COMPOSE"
 
 # ---------------------------------------------------------------------------
