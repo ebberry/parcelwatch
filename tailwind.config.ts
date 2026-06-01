@@ -20,7 +20,9 @@ export default {
           border: "#9FE1CB", // card borders (use at 0.5px)
           divider: "#E1F5EE", // faintest dividers
           sub: "#5F5E5A", // secondary text
-          faint: "#888780", // provenance line
+          // provenance line — darkened from the guide's #888780 to meet WCAG AA
+          // 4.5:1 on both white cards (5.4:1) and the pale-green page (4.7:1).
+          faint: "#6B6A66",
           amber: "#BA7517", // live-data flags + approaching deadlines (reserved)
         },
         // Provenance confidence dots (text label always accompanies the dot).

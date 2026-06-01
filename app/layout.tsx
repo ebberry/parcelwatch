@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Lora } from "next/font/google";
 import "./globals.css";
+import { ServiceWorker } from "@/components/ServiceWorker";
 
 // Body / data / numbers — clean neutral sans, two weights, tabular figures.
 const inter = Inter({
@@ -23,6 +24,19 @@ export const metadata: Metadata = {
   description:
     "One trustworthy place to understand a specific address and what's changing around it. Every data point shows its source and date.",
   applicationName: "ParcelWatch",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "ParcelWatch",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+  },
 };
 
 // Mobile-first, installable PWA target.
@@ -47,6 +61,7 @@ export default function RootLayout({
           Skip to content
         </a>
         {children}
+        <ServiceWorker />
       </body>
     </html>
   );

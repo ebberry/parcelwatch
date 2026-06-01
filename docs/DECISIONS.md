@@ -4,6 +4,32 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Phase 6: PWA + accessibility audit
+
+### Payments deferred; paywall scope decided
+**Why:** User chose to skip Stripe for now (pro features stay behind the flag, no
+billing). When billing lands, the paid tier = **watches + alerts + appeals**
+(`PRO_FEATURES` in lib/config); the core parcel report stays free for the SEO /
+word-of-mouth flywheel.
+
+### PWA: manifest, generated icons, minimal service worker
+**Why:** Installable mobile-first PWA. `app/manifest.ts` (standalone, theme
+#0F6E56, maskable + any icons). Icons generated from the brand glyph with sharp
+(already bundled by Next) into /public. A hand-rolled `public/sw.js` (network-
+first navigations → /offline fallback, cache-first static) — deliberately never
+caches parcel data / API responses, since honest freshness is product law.
+Registered production-only (SW + dev HMR don't mix).
+
+### Accessibility audit: darkened the provenance grey for WCAG AA
+**Why:** axe-core (wcag2a/2aa/21a/21aa) flagged the guide's provenance grey
+(#888780) — only 3.3–3.7:1, below the 4.5:1 minimum. Darkened `pw-faint` to
+#6B6A66 (5.4:1 on white cards, 4.7:1 on the pale-green page) — still the faintest
+tier, now compliant. After the fix: **0 violations** on the report, landing,
+sign-in, and appeal pages. (The guide mandates AA, so compliance overrides its
+exact hex.)
+
+---
+
 ## 2026-05-31 — Phase 6: real auth (Auth.js magic-link)
 
 ### Auth.js v5 + Drizzle/Postgres adapter, database sessions
