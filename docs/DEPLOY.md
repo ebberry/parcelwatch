@@ -26,10 +26,16 @@ rework.
 - **Networking → IPv4 firewall**: add rules for **HTTP (80)** and **HTTPS (443)**.
 
 ## 2. Pick your hostname
-- **No domain (MVP):** your hostname is `<ip-with-dashes>.sslip.io`. If your
-  static IP is `52.10.20.30`, that's `52-10-20-30.sslip.io`. Nothing to configure
-  — sslip.io resolves it to your IP automatically.
-- **Have a domain:** add a DNS **A record** → the static IP, and use that name.
+- **Subdomain of a domain you own (recommended):** use e.g.
+  `parcelwatch.yourdomain.com`. At your registrar's DNS, add an **A record**:
+  Host/Name = `parcelwatch`, Value = the static IP, TTL = low (5 min). Your apex
+  domain (`yourdomain.com`) is untouched — only the subdomain points here.
+  - *Namecheap:* Domain List → your domain → **Manage → Advanced DNS** → Add New
+    Record → **A Record**, Host `parcelwatch`, Value `<static IP>`. (Adding a
+    subdomain record does not disturb a parked apex.) Wait a few minutes for it
+    to resolve (`dig parcelwatch.yourdomain.com` should show the IP).
+- **No domain:** your hostname is `<ip-with-dashes>.sslip.io` (e.g.
+  `52-10-20-30.sslip.io`) — nothing to configure, it resolves to your IP.
 
 ## 3. Install Docker on the box
 SSH in (Lightsail browser SSH or your terminal), then:
