@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// Per-user, session + DB backed — never prerender at build.
+export const dynamic = "force-dynamic";
+
 export default async function AlertsPage() {
   const session = await getSession();
   if (!session) redirect("/signin?callbackUrl=/alerts");

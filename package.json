@@ -18,7 +18,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "db:push": "drizzle-kit push",
-    "worker": "tsx --env-file=.env jobs/worker.ts"
+    "worker": "tsx --env-file=.env jobs/worker.ts",
+    "worker:prod": "tsx jobs/worker.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",

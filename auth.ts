@@ -10,15 +10,18 @@ import { users, accounts, sessions, verificationTokens } from "@/db/schema";
  * (keeps marginal cost ~$0; see /docs/DECISIONS.md). Sessions live in Postgres
  * via the Drizzle adapter.
  *
- * Dev email transport: the magic link is logged to the server console and
- * written to /tmp/parcelwatch-magic-link.txt instead of being emailed. A real
- * provider plugs in via EMAIL_SERVER (SMTP / Resend) for production — no other
- * code changes.
+ * Email transport: when EMAIL_SERVER is set (production — SMTP / Resend), the
+ * Nodemailer provider sends the magic link for real. When it's NOT set (local
+ * dev), we override to log the link to the console + /tmp/parcelwatch-magic-link.txt
+ * so the flow is testable with no email service.
  *
  * Server-only. Never imported into a client component or Edge middleware (the
  * postgres driver + node:fs are Node-only). Route protection is done in pages
- * via auth(), not middleware.
+ * via auth(), not middleware. trustHost: true because we run behind a reverse
+ * proxy (Caddy) in production, not on Vercel.
  */
+const hasMailServer = Boolean(process.env.EMAIL_SERVER);
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: DrizzleAdapter(getDb(), {
     usersTable: users,
@@ -30,21 +33,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Nodemailer({
       server: process.env.EMAIL_SERVER ?? { host: "localhost", port: 1025 },
       from: process.env.EMAIL_FROM ?? "ParcelWatch <noreply@parcelwatch.local>",
-      async sendVerificationRequest({ identifier, url }) {
-        console.log(`\n🔑 ParcelWatch sign-in link for ${identifier}:\n   ${url}\n`);
-        try {
-          writeFileSync(
-            "/tmp/parcelwatch-magic-link.txt",
-            `${identifier}\n${url}\n`,
-          );
-        } catch {
-          /* dev convenience only */
-        }
-      },
+      // Dev only: log/write the link instead of emailing. With EMAIL_SERVER set,
+      // the default transport actually sends.
+      ...(hasMailServer
+        ? {}
+        : {
+            async sendVerificationRequest({ identifier, url }) {
+              console.log(
+                `\n🔑 ParcelWatch sign-in link for ${identifier}:\n   ${url}\n`,
+              );
+              try {
+                writeFileSync(
+                  "/tmp/parcelwatch-magic-link.txt",
+                  `${identifier}\n${url}\n`,
+                );
+              } catch {
+                /* dev convenience only */
+              }
+            },
+          }),
     }),
   ],
   pages: { signIn: "/signin", verifyRequest: "/signin?check=1" },
   session: { strategy: "database" },
+  trustHost: true,
   callbacks: {
     session({ session, user }) {
       if (session.user) session.user.id = user.id;

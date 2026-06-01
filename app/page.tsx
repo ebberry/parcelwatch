@@ -40,7 +40,10 @@ export default function Home() {
 
       <footer className="mt-6 border-t-[0.5px] border-pw-divider pt-6 text-xs text-pw-faint">
         We display property &amp; built-environment data only — never information
-        keyed to individuals by name. Data sourced live from King County.
+        keyed to individuals by name. Data sourced live from King County.{" "}
+        <Link href="/privacy" className="text-pw-green hover:underline">
+          Privacy
+        </Link>
       </footer>
     </main>
   );
