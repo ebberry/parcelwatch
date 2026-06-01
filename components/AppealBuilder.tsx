@@ -2,11 +2,21 @@
 
 import { useState } from "react";
 import { ProvenanceBadge } from "@/components/ProvenanceBadge";
-import { APPEAL_REASONS } from "@/lib/appeals";
+import { APPEAL_REASONS, type AppealRecommendation } from "@/lib/appeals";
 import { kmToMiles } from "@/lib/geo";
 import type { Confidence } from "@/lib/provenance";
 import type { CompSet } from "@/lib/comps/service";
 import type { SaleCompSet } from "@/lib/sales/service";
+
+const STRENGTH_COPY: Record<
+  AppealRecommendation["strength"],
+  { label: string; cls: string }
+> = {
+  strong: { label: "Strong case", cls: "bg-pw-green text-white" },
+  moderate: { label: "Moderate case", cls: "bg-pw-amber/20 text-pw-ink" },
+  weak: { label: "Weak case", cls: "bg-pw-inset text-pw-sub" },
+  none: { label: "Little support", cls: "bg-pw-inset text-pw-sub" },
+};
 
 interface ParcelFacts {
   pin: string;
@@ -47,6 +57,7 @@ export function AppealBuilder({
   compProvenance,
   sale,
   saleProvenance,
+  recommendation,
   suggestedNarrative,
   suggestedReasons,
   eAppealsUrl,
@@ -57,6 +68,7 @@ export function AppealBuilder({
   compProvenance: Provenance;
   sale: SaleCompSet | null;
   saleProvenance: Provenance;
+  recommendation: AppealRecommendation;
   suggestedNarrative: string | null;
   suggestedReasons: string[];
   eAppealsUrl: string;
@@ -64,7 +76,12 @@ export function AppealBuilder({
 }) {
   const [ownerName, setOwnerName] = useState("");
   const [contact, setContact] = useState("");
-  const [opinion, setOpinion] = useState("");
+  // Default the requested value to the recommendation when the evidence supports one.
+  const [opinion, setOpinion] = useState(
+    recommendation.shouldAppeal && recommendation.recommendedValue != null
+      ? String(recommendation.recommendedValue)
+      : "",
+  );
   const [reasons, setReasons] = useState<Set<string>>(new Set(suggestedReasons));
   const [explanation, setExplanation] = useState(suggestedNarrative ?? "");
 
@@ -82,11 +99,85 @@ export function AppealBuilder({
 
   const saleComps = sale?.comps ?? [];
 
+  const rec = recommendation;
+  const strength = STRENGTH_COPY[rec.strength];
+
   return (
     <div className="mt-6">
+      {/* Recommendation — the headline: should you appeal, and to what value */}
+      <section className="rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[15px] font-medium text-pw-ink">Our recommendation</h2>
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${strength.cls}`}>
+            {strength.label}
+          </span>
+        </div>
+
+        {rec.shouldAppeal && rec.recommendedValue != null ? (
+          <>
+            <p className="text-sm text-pw-sub">
+              The evidence supports appealing. Consider requesting a reduction to about
+            </p>
+            <p className="mt-1 font-serif text-3xl font-medium text-pw-ink">
+              {usd(rec.recommendedValue)}
+            </p>
+            <p className="mt-1 text-sm text-pw-sub">
+              from the current assessed value of{" "}
+              <span className="font-medium text-pw-ink">{usd(rec.currentAssessed)}</span> — a
+              reduction of about{" "}
+              <span className="font-medium text-pw-amber">
+                {usd(rec.reductionAmount)} ({rec.reductionPct}%)
+              </span>
+              . Lowering the assessed value lowers your property-tax bill roughly in proportion.
+            </p>
+            <p className="mt-2 text-sm text-pw-sub">
+              Based on <span className="text-pw-ink">{rec.basis}</span>
+              {rec.rangeLow != null && rec.rangeHigh != null && rec.rangeLow !== rec.rangeHigh && (
+                <>
+                  . A defensible range across the evidence is{" "}
+                  <span className="text-pw-ink">{usd(rec.rangeLow)}–{usd(rec.rangeHigh)}</span>
+                </>
+              )}
+              .
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-pw-sub">
+              The assessed value of{" "}
+              <span className="font-medium text-pw-ink">{usd(rec.currentAssessed)}</span>{" "}
+              appears broadly in line with the available evidence
+              {rec.recommendedValue != null && rec.reductionPct != null && (
+                <> (nearest indicator ≈ {usd(rec.recommendedValue)}, about {Math.abs(rec.reductionPct)}% away)</>
+              )}
+              , so a reduction may be hard to support. You can still file an appeal if you
+              have evidence we don&apos;t — recent damage, a lower appraisal, or record errors.
+            </p>
+          </>
+        )}
+
+        {rec.indicators.length > 0 && (
+          <div className="mt-3 rounded-lg border-[0.5px] border-pw-border bg-pw-inset px-3 py-2">
+            <p className="text-xs font-medium text-pw-sub">What the evidence indicates</p>
+            <ul className="mt-1 space-y-0.5 text-xs text-pw-sub">
+              {rec.indicators.map((ind) => (
+                <li key={ind.key} className="flex justify-between gap-3">
+                  <span className="capitalize">{ind.label}</span>
+                  <span className="tabular-nums text-pw-ink">{usd(ind.value)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <p className="mt-2 text-xs text-pw-faint">
+          {rec.caveats.join(" ")} Not legal advice.
+        </p>
+      </section>
+
       {/* Comparable SALES evidence (market value — strongest argument) */}
       {sale && (saleComps.length > 0 || sale.subjectSale) && (
-        <section className="no-print rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
+        <section className="no-print mt-4 rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-[15px] font-medium text-pw-ink">
               Comparable homes — recent sales &amp; assessments

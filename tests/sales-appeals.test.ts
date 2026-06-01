@@ -4,6 +4,8 @@ import {
   buildMarketValueNarrative,
   buildRecentPurchaseNarrative,
   buildAppealNarrative,
+  buildRecommendation,
+  buildRequestSentence,
 } from "@/lib/appeals";
 import type { ParcelCore } from "@/lib/adapters/kingcounty/parcel";
 import type { RawSale } from "@/lib/adapters/kingcounty/sales";
@@ -208,5 +210,63 @@ describe("sales narratives", () => {
     const { text, reasons } = buildAppealNarrative({ comp: null, sale: inline });
     expect(text).toBeNull();
     expect(reasons).toEqual([]);
+  });
+});
+
+describe("buildRecommendation", () => {
+  const assessed = 1072000;
+
+  it("anchors on the owner's recent purchase and rates it a strong case", () => {
+    const set = buildSaleCompSet(
+      subject(),
+      [sale("a", 950000, "2025-08-13"), sale("b", 980000, "2025-06-10")],
+      [sale("0000000001", 820000, "2024-09-15")],
+    );
+    const rec = buildRecommendation({ assessedTotal: assessed, sale: set, comp: null });
+    expect(rec.shouldAppeal).toBe(true);
+    expect(rec.recommendedValue).toBe(820000);
+    expect(rec.reductionPct).toBe(24);
+    expect(rec.strength).toBe("strong");
+    expect(rec.basis).toMatch(/purchase price/);
+    // Both a purchase and a sales indicator are surfaced for transparency.
+    expect(rec.indicators.map((i) => i.key)).toContain("purchase");
+    expect(rec.indicators.map((i) => i.key)).toContain("sales");
+  });
+
+  it("falls back to the comparable-sales median when there's no recent purchase", () => {
+    const set = buildSaleCompSet(subject(), [
+      sale("a", 700000, "2025-08-13"),
+      sale("b", 720000, "2025-06-10"),
+      sale("c", 680000, "2024-11-02"),
+    ]);
+    const rec = buildRecommendation({ assessedTotal: assessed, sale: set, comp: null });
+    expect(rec.shouldAppeal).toBe(true);
+    expect(rec.recommendedValue).toBe(700000);
+    expect(rec.basis).toMatch(/comparable sale/);
+  });
+
+  it("does not recommend an appeal when assessed is in line with the evidence", () => {
+    const set = buildSaleCompSet(subject(), [
+      sale("a", 1050000, "2025-08-13"),
+      sale("b", 1100000, "2025-06-10"),
+    ]);
+    const rec = buildRecommendation({ assessedTotal: assessed, sale: set, comp: null });
+    expect(rec.shouldAppeal).toBe(false);
+    expect(rec.strength).toBe("none");
+  });
+
+  it("writes a first-person request sentence only when an appeal is recommended", () => {
+    const set = buildSaleCompSet(
+      subject(),
+      [sale("a", 950000, "2025-08-13")],
+      [sale("0000000001", 820000, "2024-09-15")],
+    );
+    const rec = buildRecommendation({ assessedTotal: assessed, sale: set, comp: null });
+    const sentence = buildRequestSentence(rec);
+    expect(sentence).toMatch(/reduced from \$1,072,000 to approximately \$820,000/);
+
+    const inline = buildSaleCompSet(subject(), [sale("a", 1100000, "2025-08-13")]);
+    const recNo = buildRecommendation({ assessedTotal: assessed, sale: inline, comp: null });
+    expect(buildRequestSentence(recNo)).toBeNull();
   });
 });

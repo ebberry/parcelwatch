@@ -188,6 +188,19 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
     Living-area $/sqft would need the Assessor bulk EXTR_ResBldg (a follow-up).
   - Verified live 2026-06-01: 9 sales within 800 m of the Vashon test parcel,
     prices $495k–$915k, dates 2022–2025.
+- 🎯 **Recommendation engine (`buildRecommendation`, 2026-06-01):** turns the
+  evidence into a concrete value to request. Anchors on ONE real, cited
+  indicator — strongest first: the owner's recent purchase → comparable-sales
+  median → per-lot-sqft assessment screen — and never blends them into a
+  synthetic AVM. Only recommends appealing when assessed exceeds the indicator
+  by ≥5%; otherwise says so plainly (verified live: a Vashon parcel assessed
+  $301k that sold for $585k correctly returns "no appeal"). Prefills the
+  petition's opinion-of-value + a first-person request sentence.
+- 📋 **Living-area ($/sqft) comps — proposed, not built:** the one missing
+  dimension is building size (no keyless live sqft feed). Spec for ingesting the
+  Assessor bulk extracts (`EXTR_ResBldg`/`EXTR_RPSale`) lives in
+  `docs/specs/living-area-comps.md` — adds a size-adjusted recommendation
+  indicator. Verify URLs/fields live (Rule #1) before building.
 - **eAppeals portal (file online, owner login):** `https://blue.kingcounty.gov/assessor/eappeals/RPLookup.aspx` (200 OK).
 - **BOE petition forms (mail filing):** `https://kingcounty.gov/en/independents/governance-and-leadership/government-oversight/board-appeals-equalization/appeals-forms` (200 OK).
 - Deadline rule (computed): 60 days from value notice or July 1, whichever later.

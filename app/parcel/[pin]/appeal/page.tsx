@@ -3,7 +3,13 @@ import Link from "next/link";
 import { getParcelCore } from "@/lib/parcels/service";
 import { getComparables } from "@/lib/comps/service";
 import { getSaleComps } from "@/lib/sales/service";
-import { buildAppealNarrative, EAPPEALS_URL, BOE_FORMS_URL } from "@/lib/appeals";
+import {
+  buildAppealNarrative,
+  buildRecommendation,
+  buildRequestSentence,
+  EAPPEALS_URL,
+  BOE_FORMS_URL,
+} from "@/lib/appeals";
 import { titleCaseAddress } from "@/lib/format";
 import { AppealBuilder } from "@/components/AppealBuilder";
 
@@ -42,7 +48,15 @@ export default async function AppealPage({
   ]);
   const comp = compSv.value;
   const sale = saleSv.value;
+  const recommendation = buildRecommendation({
+    assessedTotal: p.assessment?.appraisedTotal ?? null,
+    sale,
+    comp,
+  });
   const narrative = buildAppealNarrative({ comp, sale });
+  // Lead the explanation with the concrete request, then the supporting grounds.
+  const requestSentence = buildRequestSentence(recommendation);
+  const explanation = [requestSentence, narrative.text].filter(Boolean).join("\n\n") || null;
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-10">
@@ -83,7 +97,8 @@ export default async function AppealPage({
           fetchedAt: saleSv.fetchedAt,
           confidence: saleSv.confidence,
         }}
-        suggestedNarrative={narrative.text}
+        recommendation={recommendation}
+        suggestedNarrative={explanation}
         suggestedReasons={narrative.reasons}
         eAppealsUrl={EAPPEALS_URL}
         boeFormsUrl={BOE_FORMS_URL}

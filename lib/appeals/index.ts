@@ -154,3 +154,160 @@ export function buildAppealNarrative(input: {
 
   return { text: parts.length ? parts.join("\n\n") : null, reasons };
 }
+
+// ---------------------------------------------------------------------------
+// Recommendation engine — turns the evidence into a concrete value to request.
+// ---------------------------------------------------------------------------
+
+export type AppealStrength = "strong" | "moderate" | "weak" | "none";
+
+/** One real, cited data point that indicates value (never a model output). */
+export interface ValueIndicator {
+  key: "purchase" | "sales" | "uniformity";
+  label: string;
+  value: number;
+}
+
+export interface AppealRecommendation {
+  /** The evidence supports a meaningful reduction (≥5%). */
+  shouldAppeal: boolean;
+  strength: AppealStrength;
+  currentAssessed: number | null;
+  /** The value to request on the petition (rounded). Anchored on ONE real indicator. */
+  recommendedValue: number | null;
+  /** Defensible range across the available indicators that fall below assessed. */
+  rangeLow: number | null;
+  rangeHigh: number | null;
+  /** Human label of the primary indicator the recommendation is anchored on. */
+  basis: string | null;
+  reductionAmount: number | null;
+  reductionPct: number | null;
+  /** Every available indicator, for transparency. */
+  indicators: ValueIndicator[];
+  caveats: string[];
+}
+
+const CAVEATS = [
+  "These figures use recorded sales and county assessments, not a formal appraisal — you choose the value to request.",
+  "Comparable sales are not adjusted for building size or condition.",
+  "Sale dates and the assessment date may differ.",
+];
+
+const roundTo1k = (n: number) => Math.round(n / 1000) * 1000;
+
+/**
+ * Recommend what to request on the appeal. We anchor the figure on a SINGLE
+ * real, cited indicator — strongest first: the owner's own recent purchase, then
+ * the median of comparable sales, then the per-lot-sqft assessment screen — and
+ * never blend them into a synthetic valuation. We only recommend appealing when
+ * the assessed value exceeds the indicator by a meaningful margin.
+ */
+export function buildRecommendation(input: {
+  assessedTotal: number | null;
+  sale: SaleCompSet | null;
+  comp: CompSet | null;
+}): AppealRecommendation {
+  const assessed = input.assessedTotal;
+  const indicators: ValueIndicator[] = [];
+
+  const purchase = input.sale?.subjectSale ?? null;
+  if (purchase) {
+    indicators.push({
+      key: "purchase",
+      label: `your ${monthYear(purchase.saleDate)} purchase price (${usd(purchase.salePrice)})`,
+      value: purchase.salePrice,
+    });
+  }
+  const salesMedian = input.sale?.medianSalePrice ?? null;
+  const nComps = input.sale?.comps.length ?? 0;
+  if (salesMedian != null && nComps > 0) {
+    indicators.push({
+      key: "sales",
+      label: `the median of ${nComps} comparable sale${nComps === 1 ? "" : "s"} (${usd(salesMedian)})`,
+      value: salesMedian,
+    });
+  }
+  const uniformityImplied =
+    input.comp?.medianPerLotSqFt != null && input.comp.subject.lotSqFt != null
+      ? input.comp.medianPerLotSqFt * input.comp.subject.lotSqFt
+      : null;
+  if (uniformityImplied != null) {
+    indicators.push({
+      key: "uniformity",
+      label: "comparable assessments (per lot square foot)",
+      value: uniformityImplied,
+    });
+  }
+
+  const base: AppealRecommendation = {
+    shouldAppeal: false,
+    strength: "none",
+    currentAssessed: assessed,
+    recommendedValue: null,
+    rangeLow: null,
+    rangeHigh: null,
+    basis: null,
+    reductionAmount: null,
+    reductionPct: null,
+    indicators,
+    caveats: CAVEATS,
+  };
+  if (assessed == null || assessed <= 0 || !indicators.length) return base;
+
+  // Anchor on the strongest available indicator — never an average of them.
+  const primary =
+    indicators.find((i) => i.key === "purchase") ??
+    indicators.find((i) => i.key === "sales") ??
+    indicators[0];
+
+  const recommendedValue = roundTo1k(primary.value);
+  const reductionAmount = assessed - recommendedValue;
+  const reductionPct = Math.round((reductionAmount / assessed) * 100);
+  const shouldAppeal = reductionAmount > 0 && reductionPct >= 5;
+
+  const below = indicators.map((i) => i.value).filter((v) => v < assessed);
+  const rangeLow = below.length ? roundTo1k(Math.min(...below)) : null;
+  const rangeHigh = below.length ? roundTo1k(Math.max(...below)) : null;
+
+  let strength: AppealStrength = "none";
+  if (shouldAppeal) {
+    const corroborating = below.length; // how many indicators independently agree
+    if (
+      (primary.key === "purchase" && reductionPct >= 10) ||
+      (primary.key === "sales" && nComps >= 5 && reductionPct >= 15)
+    ) {
+      strength = "strong";
+    } else if (reductionPct >= 10 || corroborating >= 2) {
+      strength = "moderate";
+    } else {
+      strength = "weak";
+    }
+  }
+
+  return {
+    ...base,
+    shouldAppeal,
+    strength,
+    recommendedValue,
+    rangeLow,
+    rangeHigh,
+    basis: primary.label,
+    reductionAmount,
+    reductionPct,
+  };
+}
+
+/**
+ * An editable, first-person request line for the petition's explanation,
+ * naming the value to request and what it's based on. Null when no appeal is
+ * recommended (we never put a manufactured request in the owner's mouth).
+ */
+export function buildRequestSentence(rec: AppealRecommendation): string | null {
+  if (!rec.shouldAppeal || rec.recommendedValue == null || rec.currentAssessed == null) {
+    return null;
+  }
+  return (
+    `I respectfully request that the assessed value be reduced from ${usd(rec.currentAssessed)} ` +
+    `to approximately ${usd(rec.recommendedValue)}, based on ${rec.basis}.`
+  );
+}
