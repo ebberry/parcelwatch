@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
+import { InfoTip } from "@/components/InfoTip";
 import type { SourcedValue } from "@/lib/provenance";
 
 /**
@@ -37,15 +38,21 @@ export function Field({
   label,
   value,
   suffix,
+  tip,
 }: {
   label: string;
   value: string | number | null | undefined;
   suffix?: string;
+  /** Optional plain-language explanation shown via an info affordance. */
+  tip?: string;
 }) {
   const has = value !== null && value !== undefined && value !== "";
   return (
     <div className="flex justify-between gap-4 py-2 text-sm">
-      <dt className="shrink-0 text-gray-500">{label}</dt>
+      <dt className="shrink-0 text-gray-500">
+        {label}
+        {tip && <InfoTip label={label} text={tip} />}
+      </dt>
       <dd className="text-right font-medium text-gray-900">
         {has ? (
           <>

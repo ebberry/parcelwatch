@@ -1,5 +1,13 @@
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
+import { InfoTip } from "@/components/InfoTip";
+import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
+
+function standardTip(label: string): string | null {
+  if (/setback/i.test(label)) return GLOSSARY.setback;
+  if (/lot area/i.test(label)) return GLOSSARY.minLotArea;
+  return null;
+}
 import {
   ZONING_DISCLAIMER,
   type ZoningAnalysis,
@@ -77,7 +85,12 @@ export function ZoningPanel({
             <dl className="mt-4 divide-y divide-gray-100 border-t border-gray-100">
               {z.standards.map((s) => (
                 <div key={s.label} className="flex justify-between gap-4 py-2 text-sm">
-                  <dt className="text-gray-500">{s.label}</dt>
+                  <dt className="text-gray-500">
+                    {s.label}
+                    {standardTip(s.label) && (
+                      <InfoTip label={s.label} text={standardTip(s.label)!} />
+                    )}
+                  </dt>
                   <dd className="text-right font-medium text-gray-900">
                     {s.value}
                     <span className="block text-xs font-normal text-gray-400">

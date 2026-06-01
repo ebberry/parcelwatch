@@ -4,6 +4,29 @@ Running log of every non-obvious choice and why. Newest first.
 
 ---
 
+## 2026-05-31 — Plain-language jargon (user request)
+
+### A glossary + accessible info-tips; decode codes inline
+**Why:** The product should read like prose, not a government spreadsheet. Coded
+values are decoded inline (PROPTYPE "R" → "Residential (R)"; flood zone shown
+with its FEMA subtype). Concept terms (assessed value, levy, SFHA, base flood
+elevation, FIRM, setback, min lot area, etc.) carry an accessible `<InfoTip>`
+(`/components/InfoTip.tsx`) — a focusable, click/Escape/click-outside affordance
+that works on touch (not hover-only), so it's WCAG-friendly and mobile-friendly.
+
+### PROPTYPE codes verified before decoding
+**Why:** Never invent meanings. R/K/C/M/T (Residential/Condominium/Commercial/
+mineral/Timber) were verified against King County's parcel-extract metadata;
+unknown codes fall back to "Other classification" rather than a guess.
+
+### Note: dev hot-reload chunk cache can corrupt after adding client components
+**Why:** After adding `<InfoTip>` ("use client"), the running `next dev` threw a
+spurious `_document.js` runtime overlay though `tsc` + `next build` were clean.
+Fix: stop dev, `rm -rf .next`, restart. (Production build is the source of truth
+for "does it actually render.")
+
+---
+
 ## 2026-05-31 — Slice 3: hazards & environment (FEMA + USGS)
 
 ### Proves the adapter pattern: two new independent sources, zero core changes

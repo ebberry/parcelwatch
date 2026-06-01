@@ -5,6 +5,7 @@ import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
 import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
+import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { ReportPanel, Field } from "@/components/ReportPanel";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
@@ -50,6 +51,7 @@ export default async function ParcelPage({
   const sv = await getParcelCore(pin);
   const p = sv.value;
   const assessment = p?.assessment ?? null;
+  const propertyType = decodePropertyType(p?.propertyType ?? null);
   const taxCalendar = getTaxCalendar();
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   // Hazard sources are independent — fetch them concurrently.
@@ -95,10 +97,19 @@ export default async function ParcelPage({
 
           <div className="flex flex-col gap-5">
             <ReportPanel title="What you own" sourced={sv}>
-              <Field label="Present use" value={p.presentUse} />
+              <Field
+                label="Present use"
+                value={p.presentUse}
+                tip={GLOSSARY.presentUse}
+              />
               <Field
                 label="Property type"
-                value={p.propertyType}
+                value={
+                  propertyType
+                    ? `${propertyType.label} (${propertyType.code})`
+                    : p.propertyType
+                }
+                tip={GLOSSARY.propertyType}
               />
               <Field label="Legal description" value={p.legalDescription} />
             </ReportPanel>
@@ -107,14 +118,17 @@ export default async function ParcelPage({
               <Field
                 label="Land"
                 value={formatUSD(assessment?.appraisedLand)}
+                tip={GLOSSARY.appraisedLand}
               />
               <Field
                 label="Improvements"
                 value={formatUSD(assessment?.appraisedImprovement)}
+                tip={GLOSSARY.appraisedImprovement}
               />
               <Field
                 label="Total appraised"
                 value={formatUSD(assessment?.appraisedTotal)}
+                tip={GLOSSARY.assessedValue}
               />
               <Field
                 label="Tax year"
@@ -123,6 +137,7 @@ export default async function ParcelPage({
               <Field
                 label="Levy jurisdiction"
                 value={assessment?.levyJurisdiction}
+                tip={GLOSSARY.levy}
               />
             </ReportPanel>
 

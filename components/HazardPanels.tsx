@@ -1,5 +1,6 @@
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { Field } from "@/components/ReportPanel";
+import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import type { FloodHazard, SeismicActivity, Earthquake } from "@/lib/hazards/service";
 
@@ -57,17 +58,25 @@ export function FloodPanel({ sourced }: { sourced: SourcedValue<FloodHazard> }) 
             </p>
           )}
           <dl className="divide-y divide-gray-100">
-            <Field label="Flood zone" value={f.floodZone} />
+            <Field
+              label="Flood zone"
+              value={
+                f.zoneSubtype ? `${f.floodZone} — ${f.zoneSubtype}` : f.floodZone
+              }
+              tip={GLOSSARY.floodZone}
+            />
             <Field
               label="Special Flood Hazard Area"
               value={f.inSFHA == null ? null : f.inSFHA ? "Yes" : "No"}
+              tip={GLOSSARY.sfha}
             />
             <Field
               label="Base flood elevation"
               value={f.baseFloodElevationFt}
               suffix="ft"
+              tip={GLOSSARY.baseFloodElevation}
             />
-            <Field label="FIRM ID" value={f.firmId} />
+            <Field label="FIRM ID" value={f.firmId} tip={GLOSSARY.firm} />
           </dl>
         </>
       )}
