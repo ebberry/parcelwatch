@@ -44,7 +44,17 @@ sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin g
 sudo usermod -aG docker $USER && newgrp docker
 ```
 
-## 4. Get the code + configure
+## 4. Get the code + launch — the one-command way
+```bash
+git clone <your-repo-url> parcelwatch && cd parcelwatch
+bash deploy/bootstrap.sh
+```
+`bootstrap.sh` installs Docker, generates the random secrets for you, asks only
+for your domain + Resend key + (optional) Anthropic/Census keys, then builds,
+creates the tables, and launches. Skip to **§6 Verify**. (The manual steps below
+are the same thing, by hand, if you prefer.)
+
+## 4b. (Manual alternative) Get the code + configure
 ```bash
 git clone <your-repo-url> parcelwatch && cd parcelwatch
 cp deploy/.env.production.example deploy/.env.production
