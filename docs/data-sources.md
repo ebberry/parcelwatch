@@ -11,26 +11,29 @@ it. This file records what was confirmed and when. Re-verify before each slice.
 
 King County migrated GIS to a new host. Use the new base; the old one is being retired.
 
-- ✅ **Primary base:** `https://gisdata.kingcounty.gov/arcgis/rest/services/OpenDataPortal/`
-- ♻️ **Failover host:** `https://gismaps.kingcounty.gov/arcgis/rest/services/...` (see below)
+- ✅ **PRIMARY (live):** `https://gismaps.kingcounty.gov/arcgis/rest/services/Property/KingCo_PropertyInfo/MapServer/2` (Parcels).
+- 🪦 **Retired fallback:** `https://gisdata.kingcounty.gov/.../OpenDataPortal/property__parcel_address_area/MapServer/1722` — retired 2026-06-01 (now returns a non-JSON redirect). Kept only as insurance if resurrected.
 - ArcGIS `currentVersion`: **10.91**. Append `?f=json` to any service/layer URL to inspect.
 
-### ⚠️ Host failover (the gisdata host goes down — 2026-06-01)
+### ⚠️ gisdata 1722 RETIRED (2026-06-01) → gismaps promoted to primary (2026-06-02)
 
-`gisdata.kingcounty.gov` went down on 2026-06-01: every `/arcgis/rest/...` request
-302-redirected to the homepage (so `res.json()` failed). The app now **fails over**
-to the older `gismaps` host, which was back up with the SAME parcel data:
+The former primary, gisdata `property__parcel_address_area/1722`, was **retired**
+(it now 302-redirects every `/arcgis/rest/...` call to the homepage; verified
+down 2026-06-02). We had built a failover to the `gismaps` host during an earlier
+flap, so the live site kept working — but it was paying a dead-primary round-trip
+on every lookup. So we **promoted gismaps to primary** and demoted the dead
+gisdata layer to insurance.
 
-- Fallback layer: `Property/KingCo_PropertyInfo/MapServer/2` (Parcels). Same field
-  names (`PIN`, `ADDR_FULL`, `KCA_ZONING`, `LOTSQFT`, `APPRLNDVAL`, `APPR_IMPR`, …).
-- **Missing on the fallback** (degrade to "not available"): `LAT`/`LON` (derived
-  from the parcel polygon centroid, `outSR=4326`, so hazard/neighborhood panels
-  keep working), `LEGALDESC`, and the tax sub-fields (`KCTP_TAXYR`, `LEVY*`,
-  `TAX_*`, `ACCNT_NUM`).
-- Implemented in `lib/adapters/kingcounty/parcel.ts` (`queryParcels` tries primary,
-  catches, retries against gismaps). Search + parcel-by-PIN both fail over;
-  comparables (appeals) gracefully show "unavailable" during an outage.
-- The lesson the brief warned about: **government endpoints change/flap — never
+- Primary layer: `Property/KingCo_PropertyInfo/MapServer/2` (Parcels). Carries
+  `PIN`, `ADDR_FULL`, `KCA_ZONING`, `LOTSQFT`, `APPRLNDVAL`, `APPR_IMPR`, etc.
+- **Not on gismaps** (surface as "not available"): `LAT`/`LON` (derived from the
+  parcel polygon centroid, `outSR=4326`, so hazard/neighborhood panels work),
+  `LEGALDESC`, and the tax sub-fields (`KCTP_TAXYR`, `LEVY*`, `TAX_*`, `ACCNT_NUM`).
+  → **Restored by the Assessor EXTR ingestion** (`EXTR_Parcel`/`EXTR_RPAcct`) —
+  see `docs/specs/living-area-comps.md`.
+- Implemented in `parcel.ts` + `comparables.ts` (`queryParcels` / `searchComparables`
+  / `getValuationsByPins` try gismaps first, fall back to the dead gisdata layer).
+- The lesson the brief warned about: **government endpoints change/retire — never
   hardcode a single host.**
 
 ### ⭐ Slice 1 anchor — `property__parcel_address_area` (MapServer), layer **1722**

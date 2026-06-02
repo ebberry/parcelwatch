@@ -10,28 +10,29 @@ import {
 /**
  * King County parcel adapter — Slice 1 core.
  *
- * Primary source: the denormalized `property__parcel_address_area` layer (1722)
- * on the OpenDataPortal (gisdata) host — PIN, address, coordinates, lot size,
- * zoning, present use, and assessment, all in one query.
+ * PRIMARY source: the `gismaps` host's KingCo_PropertyInfo Parcels layer (2).
+ * We promoted it to primary on 2026-06-02 because the former primary — the
+ * OpenDataPortal (gisdata) `property__parcel_address_area` layer (1722) — was
+ * RETIRED on 2026-06-01 (it now returns a non-JSON redirect for every query).
+ * Lat/lon is absent on this layer, so it's derived from the parcel polygon
+ * centroid; a few fields (legal description, tax year, levy, account number) are
+ * not on it and surface as "not available" — those are restored by the Assessor
+ * EXTR ingestion (see /docs/specs/living-area-comps.md).
  *
- * HOST FAILOVER: King County's gisdata host goes down periodically (verified
- * 2026-06-01 — it 302-redirected every API call to its homepage). When the
- * primary fails we fall back to the older `gismaps` host's KingCo_PropertyInfo
- * Parcels layer (2), which carries the SAME field names. Lat/lon (absent there)
- * is derived from the parcel polygon centroid so the hazard/neighborhood panels
- * keep working; a few fields (legal description, tax year, levy) degrade to
- * "not available". See /docs/data-sources.md.
+ * FAILOVER: if gismaps ever fails, we still try the old gisdata layer (cheap
+ * insurance in case it's resurrected). See /docs/data-sources.md.
  *
  * Privacy: neither layer carries an owner-name field (see /docs/privacy.md).
  */
 
-const PARCEL_ADDRESS_QUERY = `${KC_OPENDATA_BASE}/property__parcel_address_area/MapServer/1722/query`;
-
-/** Failover host/layer (older gismaps host). Same field names, subset of fields. */
+/** PRIMARY (live): gismaps KingCo_PropertyInfo Parcels layer. Subset of fields. */
 const GISMAPS_PARCEL_QUERY =
   "https://gismaps.kingcounty.gov/arcgis/rest/services/Property/KingCo_PropertyInfo/MapServer/2/query";
-const FALLBACK_FIELDS =
+const GISMAPS_FIELDS =
   "PIN,MAJOR,MINOR,ADDR_FULL,POSTALCTYNAME,CTYNAME,ZIP5,LOTSQFT,KCA_ACRES,KCA_ZONING,PREUSE_CODE,PREUSE_DESC,PROPTYPE,APPRLNDVAL,APPR_IMPR";
+
+/** Retired fallback (gisdata 1722) — kept only as insurance if it's resurrected. */
+const GISDATA_PARCEL_QUERY = `${KC_OPENDATA_BASE}/property__parcel_address_area/MapServer/1722/query`;
 
 const DETAIL_FIELDS = [
   "PIN",
@@ -239,39 +240,41 @@ function fromFallback(f: ArcgisFeature<Partial<RawParcelAttributes>>): RawParcel
 }
 
 /**
- * Run a parcel query against the primary host; if it's down, transparently fall
- * back to the gismaps host. Returns rows in the uniform RawParcelAttributes shape.
+ * Run a parcel query against the live gismaps host; if it ever fails, try the
+ * retired gisdata layer as insurance. Returns the uniform RawParcelAttributes
+ * shape. `richFields` is the (richer) field list to request IF gisdata answers.
  */
 async function queryParcels(opts: {
   where: string;
-  primaryFields: string;
+  richFields: string;
   orderByFields?: string;
   resultRecordCount?: number;
-  /** Derive lat/lon from polygon geometry on the fallback (needed for by-PIN). */
-  fallbackGeometry?: boolean;
+  /** Derive lat/lon from polygon geometry on gismaps (needed for by-PIN). */
+  withGeometry?: boolean;
 }): Promise<RawParcelAttributes[]> {
   try {
-    const res = await queryLayer<RawParcelAttributes>({
-      queryUrl: PARCEL_ADDRESS_QUERY,
+    // PRIMARY: gismaps (live). Lat/lon from the polygon centroid when needed.
+    const res = await queryLayer<Partial<RawParcelAttributes>>({
+      queryUrl: GISMAPS_PARCEL_QUERY,
       where: opts.where,
-      outFields: opts.primaryFields,
+      outFields: GISMAPS_FIELDS,
+      returnGeometry: Boolean(opts.withGeometry),
+      outSR: opts.withGeometry ? "4326" : undefined,
+      orderByFields: opts.orderByFields,
+      resultRecordCount: opts.resultRecordCount,
+    });
+    return (res.features ?? []).map(fromFallback);
+  } catch {
+    // Insurance: the retired gisdata layer (richer fields) if it's resurrected.
+    const res = await queryLayer<RawParcelAttributes>({
+      queryUrl: GISDATA_PARCEL_QUERY,
+      where: opts.where,
+      outFields: opts.richFields,
       returnGeometry: false,
       orderByFields: opts.orderByFields,
       resultRecordCount: opts.resultRecordCount,
     });
     return (res.features ?? []).map((f) => f.attributes);
-  } catch {
-    // Primary (gisdata) unreachable — fall back to the gismaps host.
-    const res = await queryLayer<Partial<RawParcelAttributes>>({
-      queryUrl: GISMAPS_PARCEL_QUERY,
-      where: opts.where,
-      outFields: FALLBACK_FIELDS,
-      returnGeometry: Boolean(opts.fallbackGeometry),
-      outSR: opts.fallbackGeometry ? "4326" : undefined,
-      orderByFields: opts.orderByFields,
-      resultRecordCount: opts.resultRecordCount,
-    });
-    return (res.features ?? []).map(fromFallback);
   }
 }
 
@@ -291,8 +294,8 @@ export const kingCountyParcelAdapter: DataSourceAdapter<
     }
     const rows = await queryParcels({
       where: `PIN='${escapeArcgisLiteral(pin)}'`,
-      primaryFields: DETAIL_FIELDS,
-      fallbackGeometry: true, // derive lat/lon from geometry if we fail over
+      richFields: DETAIL_FIELDS,
+      withGeometry: true, // gismaps lat/lon comes from the polygon centroid
     });
     // Prefer the primary-address row (only present on the primary layer).
     const feature = rows.find((r) => r.PRIMARY_ADDR === 1) ?? rows[0];
@@ -337,7 +340,7 @@ export async function searchParcelsByAddress(
 
   const rows = await queryParcels({
     where: `ADDR_FULL LIKE '%${escapeArcgisLiteral(term)}%'`,
-    primaryFields: SEARCH_FIELDS,
+    richFields: SEARCH_FIELDS,
     orderByFields: "ADDR_FULL",
     resultRecordCount: 25,
   });

@@ -9,15 +9,15 @@ import { polygonRingCentroid } from "@/lib/geo";
  * sales.ts). It supports the "uniformity" appeal argument (similar nearby homes
  * are assessed lower) and is never a modeled valuation.
  *
- * HOST FAILOVER: primary is the gisdata OpenDataPortal layer 1722; if that host
- * is down we fall back to the gismaps KingCo_PropertyInfo Parcels layer (2),
- * which carries the same fields and parcel geometry (lat/lon derived from the
- * polygon centroid). Verified live 2026-06-01 — see /docs/data-sources.md.
+ * SOURCE: gismaps KingCo_PropertyInfo Parcels layer (2) is PRIMARY (the old
+ * gisdata layer 1722 was retired 2026-06-01). Lat/lon comes from the polygon
+ * centroid; we dedupe by PIN. The retired gisdata layer is kept only as
+ * insurance if it's resurrected. See /docs/data-sources.md.
  */
 
-const PARCEL_ADDRESS_QUERY = `${KC_OPENDATA_BASE}/property__parcel_address_area/MapServer/1722/query`;
 const GISMAPS_PARCEL_QUERY =
   "https://gismaps.kingcounty.gov/arcgis/rest/services/Property/KingCo_PropertyInfo/MapServer/2/query";
+const GISDATA_PARCEL_QUERY = `${KC_OPENDATA_BASE}/property__parcel_address_area/MapServer/1722/query`;
 
 export interface RawComparable {
   pin: string;
@@ -99,19 +99,21 @@ export async function getValuationsByPins(
   };
 
   try {
-    const res = await queryLayer<CompAttributes & { PRIMARY_ADDR: number | null }>({
-      queryUrl: PARCEL_ADDRESS_QUERY,
+    // PRIMARY: gismaps (no PRIMARY_ADDR column; dedup by PIN in collect()).
+    const res = await queryLayer<Partial<CompAttributes>>({
+      queryUrl: GISMAPS_PARCEL_QUERY,
       where: `PIN IN (${inList})`,
-      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR,PRIMARY_ADDR",
+      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR",
       returnGeometry: false,
       resultRecordCount: 200,
     });
     collect(res.features ?? []);
   } catch {
-    const res = await queryLayer<Partial<CompAttributes>>({
-      queryUrl: GISMAPS_PARCEL_QUERY,
+    // Insurance: retired gisdata layer (has PRIMARY_ADDR) if it's resurrected.
+    const res = await queryLayer<CompAttributes & { PRIMARY_ADDR: number | null }>({
+      queryUrl: GISDATA_PARCEL_QUERY,
       where: `PIN IN (${inList})`,
-      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR",
+      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR,PRIMARY_ADDR",
       returnGeometry: false,
       resultRecordCount: 200,
     });
@@ -135,20 +137,8 @@ export async function searchComparables(opts: {
   const resultRecordCount = opts.limit ?? 50;
 
   try {
-    // Primary (gisdata): has LAT/LON columns and a PRIMARY_ADDR flag.
-    const res = await queryLayer<CompAttributes>({
-      queryUrl: PARCEL_ADDRESS_QUERY,
-      where: `PREUSE_CODE=${code} AND PRIMARY_ADDR=1 AND APPR_IMPR>0 AND LOTSQFT>0 AND PIN<>'${excl}'`,
-      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR,LAT,LON",
-      returnGeometry: false,
-      resultRecordCount,
-      distanceMeters,
-      point,
-    });
-    return (res.features ?? []).map((f) => toRawComparable(f.attributes, f.geometry));
-  } catch {
-    // Failover (gismaps): no LAT/LON or PRIMARY_ADDR — derive coords from
-    // geometry and dedupe by PIN.
+    // PRIMARY (gismaps): no LAT/LON or PRIMARY_ADDR — derive coords from the
+    // polygon centroid and dedupe by PIN.
     const res = await queryLayer<Partial<CompAttributes>>({
       queryUrl: GISMAPS_PARCEL_QUERY,
       where: `PREUSE_CODE=${code} AND APPR_IMPR>0 AND LOTSQFT>0 AND PIN<>'${excl}'`,
@@ -165,5 +155,17 @@ export async function searchComparables(opts: {
       if (row.pin && !byPin.has(row.pin)) byPin.set(row.pin, row);
     }
     return [...byPin.values()];
+  } catch {
+    // Insurance: retired gisdata layer (LAT/LON columns + PRIMARY_ADDR flag).
+    const res = await queryLayer<CompAttributes>({
+      queryUrl: GISDATA_PARCEL_QUERY,
+      where: `PREUSE_CODE=${code} AND PRIMARY_ADDR=1 AND APPR_IMPR>0 AND LOTSQFT>0 AND PIN<>'${excl}'`,
+      outFields: "PIN,ADDR_FULL,LOTSQFT,APPRLNDVAL,APPR_IMPR,LAT,LON",
+      returnGeometry: false,
+      resultRecordCount,
+      distanceMeters,
+      point,
+    });
+    return (res.features ?? []).map((f) => toRawComparable(f.attributes, f.geometry));
   }
 }
