@@ -105,6 +105,26 @@ Save a full raw response as a fixture under `/tests` when building the adapter.
   (county-owned property only), **not** the general assessor roll. Do **not**
   use it as the general attribute source. Layer 1722 is the right anchor.
 
+### ⭐ Parcel map — aerial + boundary (shipped 2026-06-02)
+"This is your place" — a static aerial with the parcel boundary drawn on top, at
+the top of the report. Fully keyless, no map library. `lib/map/static.ts` (pure
+projection), `lib/adapters/kingcounty/boundary.ts`, `components/ParcelMap.tsx`.
+- **Boundary ring:** the gismaps parcel layer
+  `Property/KingCo_PropertyInfo/MapServer/2/query?where=PIN='…'&returnGeometry=true&outSR=4326`
+  → `geometry.rings[0]` as [lon,lat] (same layer as parcel core, but we keep the
+  full ring instead of just the centroid).
+- **Aerial (primary):** King County orthos
+  `https://gismaps.kingcounty.gov/arcgis/rest/services/BaseMaps/KingCo_Aerial_<YEAR>/MapServer/export`
+  (orthos published 1936→**2025**; `KC_AERIAL_YEAR` constant — bump as new ones land).
+  **Fallback (keyless):** Esri `World_Imagery/MapServer/export`. Both requested
+  for the SAME mercator bbox (`bboxSR=imageSR=3857`), so the SVG boundary overlay
+  aligns to either image; client `onError` swaps primary→fallback→hide.
+- **Projection:** ring lon/lat → Web Mercator → pixels within the bbox (pure,
+  tested). Padded 0.6× with a min half-extent so tiny parcels don't over-zoom.
+- Attribution shown ("Aerial: King County 2025 · boundary from King County
+  Assessor"). Verified live for Vashon parcel `0221029065` (waterfront lot,
+  boundary aligns to the visible lot/house).
+
 ---
 
 ## Slice 2 — tax & assessment (verified 2026-05-31)

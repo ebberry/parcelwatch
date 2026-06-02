@@ -27,6 +27,7 @@ import { getCivicActivity } from "@/lib/watches/service";
 import { resolveArea } from "@/lib/watches/area";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { getSepticStatus } from "@/lib/adapters/kingcounty/septic";
+import { getParcelBoundary } from "@/lib/adapters/kingcounty/boundary";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { titleCaseAddress } from "@/lib/format";
 import { Panel, Field, MetricTile, PanelInsight } from "@/components/Panel";
@@ -45,6 +46,7 @@ import { SiteRiskPanel } from "@/components/SiteRiskPanel";
 import { GeoHazardsPanel } from "@/components/GeoHazardsPanel";
 import { SmelterPlumePanel } from "@/components/SmelterPlumePanel";
 import { SepticPanel } from "@/components/SepticPanel";
+import { ParcelMap } from "@/components/ParcelMap";
 import { AppealCallout } from "@/components/AppealCallout";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { BrandMark } from "@/components/BrandMark";
@@ -84,7 +86,7 @@ export default async function ParcelPage({
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, siteRisk, geoHazards, soil, septic, epa, water, neighborhood, councilActivity, compSv, saleSv] =
+  const [flood, seismic, siteRisk, geoHazards, soil, septic, boundary, epa, water, neighborhood, councilActivity, compSv, saleSv] =
     await Promise.all([
       getFloodHazard(lat, lon),
       getSeismicActivity(lat, lon),
@@ -92,6 +94,7 @@ export default async function ParcelPage({
       getGeoHazards(lat, lon),
       getSoilContamination(lat, lon),
       getSepticStatus(p?.pin ?? null),
+      getParcelBoundary(p?.pin ?? null),
       getEpaSites(lat, lon),
       getWaterSystem(lat, lon),
       getNeighborhoodStats(lat, lon),
@@ -168,6 +171,12 @@ export default async function ParcelPage({
               <span className="tabular-nums">PIN {p.pin}</span>
             </p>
           </header>
+
+          {boundary && (
+            <div className="mb-6">
+              <ParcelMap ring={boundary.ring} address={p.address} />
+            </div>
+          )}
 
           <ReportSummary findings={findings} />
 
