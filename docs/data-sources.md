@@ -302,6 +302,28 @@ independently (`Promise.all` + per-source `.catch`); both down → unavailable.
   and picks/enters their supplier; the choice is saved per-parcel in localStorage
   (migrates to the account once auth lands).
 
+### ⭐ King County Public Health — septic vs sewer + OSS records — shipped 2026-06-02
+High value on Vashon (mostly septic). The "Systems & services" panel group's first
+member. `lib/adapters/kingcounty/septic.ts`, `components/SepticPanel.tsx`.
+- ⚠️ **gisdata copy RETIRED** (`OpenDataPortal/utility__septic_onsite_parcel_area`
+  → 302 to homepage, same death as layer 1722). **Live successor on gismaps:**
+  `https://gismaps.kingcounty.gov/arcgis/rest/services/Utility/KingCo_Septic/MapServer`.
+- **Keyed by PIN — we query by PIN, not point** (exact, no centroid drift):
+  - **Layer 2 "Wastewater treatment type":** `where=PIN='<pin>'`, `outFields=WastewaterTreatmentType,SewerAgency,ExpSewerAgency`.
+    `WastewaterTreatmentType` domain: `on-site sewage system` / `sewer connection`
+    / `vacant` / `all other values`. `normalizeTreatment` (pure/tested) → septic |
+    sewer | vacant | other | unknown.
+  - **Layer 3 "Septic and Group B records":** `where=plibrary.utility.ilinx_orme_septic_doc_parcel.PIN='<pin>'`,
+    `outFields=…n_OnlineRME,…n_Sewage,…n_GroupB` (counts of records on file →
+    "are there as-builts to retrieve?"). Note the qualified `plibrary.…` field
+    names (joined view).
+- **Link-out** (verified 200): Public Health "Septic and Group B Records Search"
+  instant app `https://www.arcgis.com/apps/instant/sidebar/index.html?appid=6c0bbaa4339c4ffab0c53cfe1f8d3d85`
+  — retrieve the actual as-built drawings (behind an Azure APIM proxy, so link out).
+- Each layer degrades independently; both down → unavailable; no row = "unknown"
+  (valid), not an error. Confirmed live for Vashon parcel `0221029065`: "on-site
+  sewage system", 2 septic + 1 Group B records on file.
+
 ### NWS active weather alerts — ⛔ DROPPED (product fit)
 - Verified working (`https://api.weather.gov/alerts/active?point=<lat>,<lon>`, needs a
   User-Agent header) but removed: live weather is a real-time utility that doesn't fit
