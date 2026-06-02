@@ -1,7 +1,7 @@
 import type { AppealRecommendation } from "@/lib/appeals";
 import type { FloodHazard } from "@/lib/adapters/fema";
 import type { SeismicActivity } from "@/lib/adapters/usgs";
-import type { SiteRisk } from "@/lib/risk/service";
+import type { SiteRisk, SmelterPlume } from "@/lib/risk/service";
 import type { NearbySites } from "@/lib/environment/nearby";
 import type { TaxCalendar } from "@/lib/tax/deadlines";
 
@@ -36,6 +36,7 @@ export function summarizeFindings(input: {
   seismic: SeismicActivity | null;
   siteRisk: SiteRisk | null;
   criticalAreas?: string[];
+  soil?: SmelterPlume | null;
   epa: NearbySites | null;
   councilCount: number;
   tax: TaxCalendar | null;
@@ -101,6 +102,20 @@ export function summarizeFindings(input: {
         tone: "attention",
         href: "#geo",
         title: "In a mapped landslide hazard area (may restrict building)",
+      },
+    });
+  }
+
+  // 2d. Soil arsenic at/above the residential action level (Tacoma Smelter
+  // Plume) — actionable: free soil testing + possible yard cleanup.
+  if (input.soil?.severity === "above-action") {
+    ranked.push({
+      priority: 1.7,
+      finding: {
+        id: "soil",
+        tone: "attention",
+        href: "#soil",
+        title: "Modeled soil arsenic above the residential action level (free testing available)",
       },
     });
   }

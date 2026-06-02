@@ -16,7 +16,7 @@ import { buildRecommendation } from "@/lib/appeals";
 import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
 import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
-import { getSiteRisk, getGeoHazards } from "@/lib/risk/service";
+import { getSiteRisk, getGeoHazards, getSoilContamination } from "@/lib/risk/service";
 import {
   getEpaSites,
   getWaterSystem,
@@ -42,6 +42,7 @@ import { WaterPanel } from "@/components/WaterPanel";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { SiteRiskPanel } from "@/components/SiteRiskPanel";
 import { GeoHazardsPanel } from "@/components/GeoHazardsPanel";
+import { SmelterPlumePanel } from "@/components/SmelterPlumePanel";
 import { AppealCallout } from "@/components/AppealCallout";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { BrandMark } from "@/components/BrandMark";
@@ -81,12 +82,13 @@ export default async function ParcelPage({
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, siteRisk, geoHazards, epa, water, neighborhood, councilActivity, compSv, saleSv] =
+  const [flood, seismic, siteRisk, geoHazards, soil, epa, water, neighborhood, councilActivity, compSv, saleSv] =
     await Promise.all([
       getFloodHazard(lat, lon),
       getSeismicActivity(lat, lon),
       getSiteRisk(lat, lon),
       getGeoHazards(lat, lon),
+      getSoilContamination(lat, lon),
       getEpaSites(lat, lon),
       getWaterSystem(lat, lon),
       getNeighborhoodStats(lat, lon),
@@ -108,6 +110,7 @@ export default async function ParcelPage({
     seismic: seismic.value,
     siteRisk: siteRisk.value,
     criticalAreas: geoHazards.value?.criticalAreas ?? [],
+    soil: soil.value,
     epa: epa.value,
     councilCount: councilActivity.value?.length ?? 0,
     tax: taxCalendar.value,
@@ -245,6 +248,10 @@ export default async function ParcelPage({
 
               <div id="geo" className="scroll-mt-4">
                 <GeoHazardsPanel sourced={geoHazards} />
+              </div>
+
+              <div id="soil" className="scroll-mt-4">
+                <SmelterPlumePanel sourced={soil} />
               </div>
 
               <div id="flood" className="scroll-mt-4">

@@ -314,11 +314,30 @@ independently (`Promise.all` + per-source `.catch`); both down → unavailable.
   277.02 → pop 4,825, median income $125,587, median home value $763,100, 82% owner-occupied.
   Vars: B01003_001E (pop), B19013_001E (income), B25077_001E (home value), B25003_001E/002E (tenure).
 
-### ⛔ WA Ecology TCP CleanupSites — DEFERRED (unreliable spatial filter)
-- `services.arcgis.com/6lCKYNJLvwTXqrmp/.../TCP/FeatureServer/0` returns sites far
-  outside the buffer; `Latitude`/`Longitude` = responsible-party location, not the
-  contamination footprint; geometry is State Plane (wkid 2927) and reprojection
-  to 4326 drops rows. Needs footprint/proj handling before it's trustworthy.
+### ⭐ WA Ecology — Tacoma Smelter Plume footprint (soil arsenic) — shipped 2026-06-02
+The flagship environmental signal for this market: all of Vashon-Maury sits in
+the plume from the former ASARCO smelter (arsenic + lead in surface soil).
+`lib/adapters/waecology/smelterPlume.ts`, `lib/risk/service.ts#getSoilContamination`,
+`components/SmelterPlumePanel.tsx`.
+- ✅ **Footprint POLYGON (layer 1), keyless point-in-polygon:**
+  `https://services.arcgis.com/6lCKYNJLvwTXqrmp/arcgis/rest/services/TCP/FeatureServer/1/query`.
+  Params: `geometry=<lon>,<lat>`, `geometryType=esriGeometryPoint`, `inSR=4326`
+  (server reprojects from WA State Plane 2927 — verified, no row drop),
+  `spatialRel=esriSpatialRelIntersects`, `outFields=NAME,MILES_FROM`,
+  `returnGeometry=false`, `f=json`.
+- **`NAME` = the modeled arsenic band** (verbatim, honest): "Under 20 ppm",
+  "20 ppm to 40 ppm", "40.1 ppm to 100 ppm", "Over 100 ppm", plus "Limited Data"
+  / "Military Base/State Facility". `classifyPlumeBand` (pure/tested) maps these
+  to severity against the published reference levels — **20 ppm = state cleanup
+  level, 100 ppm = residential-yard action level**. Above-action surfaces in the
+  "What matters here" header (priority 1.7, "free testing available").
+- ⚠️ **Use layer 1, NOT layer 0** (cleanup-sites points): layer 0's
+  `Latitude`/`Longitude` is the responsible-party address, not the contamination
+  area — that's why the earlier point-buffer attempt was unreliable. The polygon
+  footprint is the correct geometry.
+- Honesty: a *modeled* estimate (distance + wind rose), not a measured soil test
+  — the panel says so and points to the free Dirt Alert program. Confirmed live
+  for Vashon parcel `0221029065`: "Over 100 ppm", 3.1 mi from the smelter.
 
 ## Slice 5 — the watches (verified 2026-05-31)
 
@@ -391,7 +410,7 @@ Postgres (`watches` incl. `snapshot`, `watch_seen`, `alerts`); **BullMQ** schedu
 ## To verify before later slices
 
 - [ ] WA Legislature: in-session incremental polling (GetLegislationIntroducedSince) + per-bill titles.
-- [ ] WA Ecology cleanup sites — proper footprint + projection handling (Tacoma Smelter Plume affects Vashon).
+- [x] WA Ecology — Tacoma Smelter Plume footprint (soil arsenic) shipped 2026-06-02 via the polygon layer (point-in-polygon, inSR=4326). See the Slice 3b section above. (Cleanup-sites *points* remain deferred — wrong geometry.)
 - [x] King County real-property **sales** for sale-based comps — ✅ live via
       `KingCo_PropertyInfo/MapServer/3` (last 3 years). Bulk EXTR_ResBldg still a
       follow-up for living-area $/sqft (size-adjusted comps).

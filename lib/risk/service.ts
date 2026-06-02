@@ -2,7 +2,10 @@ import { geocodeTract } from "@/lib/adapters/census/neighborhood";
 import { getNriByTract, type SiteRisk } from "@/lib/adapters/fema/nri";
 import { getSensitiveAreas } from "@/lib/adapters/kingcounty/sensitiveAreas";
 import { getLiquefaction } from "@/lib/adapters/wadnr/liquefaction";
+import { getSmelterPlume, type SmelterPlume } from "@/lib/adapters/waecology/smelterPlume";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
+
+export type { SmelterPlume } from "@/lib/adapters/waecology/smelterPlume";
 
 export type { SiteRisk, NriHazard } from "@/lib/adapters/fema/nri";
 
@@ -67,4 +70,30 @@ export async function getGeoHazards(
     fetchedAt: new Date().toISOString(),
     confidence: "live",
   };
+}
+
+const PLUME_SOURCE = "WA Dept of Ecology — Tacoma Smelter Plume model";
+
+/**
+ * Soil-contamination band from the Tacoma Smelter Plume footprint. Material for
+ * this market (all of Vashon-Maury is in the plume). Modeled, not measured —
+ * the panel says so. Degrades to unavailable off-footprint or on error.
+ */
+export async function getSoilContamination(
+  lat: number | null,
+  lon: number | null,
+): Promise<SourcedValue<SmelterPlume>> {
+  if (lat == null || lon == null) return unavailable(PLUME_SOURCE);
+  try {
+    const plume = await getSmelterPlume(lat, lon);
+    if (!plume) return unavailable(PLUME_SOURCE);
+    return {
+      value: plume,
+      source: PLUME_SOURCE,
+      fetchedAt: new Date().toISOString(),
+      confidence: "live",
+    };
+  } catch {
+    return unavailable(PLUME_SOURCE);
+  }
 }
