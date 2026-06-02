@@ -1,5 +1,7 @@
 import { geocodeTract } from "@/lib/adapters/census/neighborhood";
 import { getNriByTract, type SiteRisk } from "@/lib/adapters/fema/nri";
+import { getSensitiveAreas } from "@/lib/adapters/kingcounty/sensitiveAreas";
+import { getLiquefaction } from "@/lib/adapters/wadnr/liquefaction";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
 
 export type { SiteRisk, NriHazard } from "@/lib/adapters/fema/nri";
@@ -31,4 +33,38 @@ export async function getSiteRisk(
   } catch {
     return unavailable(SOURCE);
   }
+}
+
+const GEO_SOURCE = "King County critical areas + WA DNR geology";
+
+export interface GeoHazards {
+  /** KC mapped critical-area hazards the parcel falls in (regulatory). */
+  criticalAreas: string[];
+  /** WA DNR liquefaction susceptibility class at the point. */
+  liquefaction: string | null;
+}
+
+/**
+ * Site-specific geologic/critical-area hazards: which KC mapped hazard areas the
+ * parcel is in (landslide, steep slope, erosion, …) plus DNR liquefaction
+ * susceptibility. These carry regulatory weight — distinct from the NRI's
+ * tract-level relative index. Each source degrades independently.
+ */
+export async function getGeoHazards(
+  lat: number | null,
+  lon: number | null,
+): Promise<SourcedValue<GeoHazards>> {
+  if (lat == null || lon == null) return unavailable(GEO_SOURCE);
+  const [areas, liq] = await Promise.all([
+    getSensitiveAreas(lat, lon).catch(() => null),
+    getLiquefaction(lat, lon).catch(() => null),
+  ]);
+  // Both down → unavailable; otherwise report what we have.
+  if (areas == null && liq == null) return unavailable(GEO_SOURCE);
+  return {
+    value: { criticalAreas: areas ?? [], liquefaction: liq },
+    source: GEO_SOURCE,
+    fetchedAt: new Date().toISOString(),
+    confidence: "live",
+  };
 }

@@ -16,7 +16,7 @@ import { buildRecommendation } from "@/lib/appeals";
 import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
 import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
-import { getSiteRisk } from "@/lib/risk/service";
+import { getSiteRisk, getGeoHazards } from "@/lib/risk/service";
 import {
   getEpaSites,
   getWaterSystem,
@@ -41,6 +41,7 @@ import { NearbySitesPanel, NeighborhoodPanel } from "@/components/EnvironmentPan
 import { WaterPanel } from "@/components/WaterPanel";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { SiteRiskPanel } from "@/components/SiteRiskPanel";
+import { GeoHazardsPanel } from "@/components/GeoHazardsPanel";
 import { AppealCallout } from "@/components/AppealCallout";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { BrandMark } from "@/components/BrandMark";
@@ -80,11 +81,12 @@ export default async function ParcelPage({
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, siteRisk, epa, water, neighborhood, councilActivity, compSv, saleSv] =
+  const [flood, seismic, siteRisk, geoHazards, epa, water, neighborhood, councilActivity, compSv, saleSv] =
     await Promise.all([
       getFloodHazard(lat, lon),
       getSeismicActivity(lat, lon),
       getSiteRisk(lat, lon),
+      getGeoHazards(lat, lon),
       getEpaSites(lat, lon),
       getWaterSystem(lat, lon),
       getNeighborhoodStats(lat, lon),
@@ -105,6 +107,7 @@ export default async function ParcelPage({
     flood: flood.value,
     seismic: seismic.value,
     siteRisk: siteRisk.value,
+    criticalAreas: geoHazards.value?.criticalAreas ?? [],
     epa: epa.value,
     councilCount: councilActivity.value?.length ?? 0,
     tax: taxCalendar.value,
@@ -238,6 +241,10 @@ export default async function ParcelPage({
             <ReportGroup label="Risks & site">
               <div id="risk" className="scroll-mt-4">
                 <SiteRiskPanel sourced={siteRisk} />
+              </div>
+
+              <div id="geo" className="scroll-mt-4">
+                <GeoHazardsPanel sourced={geoHazards} />
               </div>
 
               <div id="flood" className="scroll-mt-4">

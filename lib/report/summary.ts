@@ -35,6 +35,7 @@ export function summarizeFindings(input: {
   flood: FloodHazard | null;
   seismic: SeismicActivity | null;
   siteRisk: SiteRisk | null;
+  criticalAreas?: string[];
   epa: NearbySites | null;
   councilCount: number;
   tax: TaxCalendar | null;
@@ -88,6 +89,19 @@ export function summarizeFindings(input: {
     ranked.push({
       priority: 1.5,
       finding: { id: "risk", tone: "attention", href: "#risk", title },
+    });
+  }
+
+  // 2c. A mapped landslide critical-area is high-actionability (regulatory).
+  if (input.criticalAreas?.includes("Landslide hazard area")) {
+    ranked.push({
+      priority: 1.6,
+      finding: {
+        id: "geo",
+        tone: "attention",
+        href: "#geo",
+        title: "In a mapped landslide hazard area (may restrict building)",
+      },
     });
   }
 

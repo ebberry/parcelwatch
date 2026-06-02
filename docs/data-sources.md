@@ -172,6 +172,37 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
   `components/SiteRiskPanel.tsx`. Honesty: relative modeled national index, labeled
   "not a site-specific assessment". (NRI data current v1.20, Dec 2025.)
 
+### ⭐ Critical areas & geology — point-in-polygon site hazards (shipped 2026-06-02)
+Distinct from the NRI's tract-level *relative* index: these are **point-in-polygon
+facts with regulatory weight** (a mapped critical area can add setbacks, a
+geotechnical study, or clearing limits to a permit). Each source degrades
+independently (`Promise.all` + per-source `.catch`); both down → unavailable.
+`lib/risk/service.ts#getGeoHazards`, `components/GeoHazardsPanel.tsx`.
+
+- ✅ **King County SensitiveAreas (critical areas) — `identify`, keyless:**
+  `https://gismaps.kingcounty.gov/arcgis/rest/services/Environment/KingCo_SensitiveAreas/MapServer/identify`.
+  Params: `geometry=<lon>,<lat>`, `geometryType=esriGeometryPoint`, `sr=4326`,
+  `layers=all:1,3,4,7,8,9,15,17`, `tolerance=2`, `imageDisplay=256,256,96`,
+  `mapExtent=<lon-.01>,<lat-.01>,<lon+.01>,<lat+.01>`, `returnGeometry=false`,
+  `f=json`. We map hit `layerId` → hazard name and dedupe (`parseHazardHits`,
+  pure/tested): `{1,3:"Landslide hazard area", 4:"Steep slope hazard",
+  7:"Erosion hazard", 8:"Seismic hazard area", 9:"Coal mine hazard",
+  15:"Channel migration hazard", 17:"Debris flow hazard"}`. Non-hazard layers
+  (basin condition, shoreline designations, …) are ignored. Confirmed live for
+  Vashon parcel `0221029065`: parcel centroid falls in **Steep slope + Erosion**
+  (a point a few m away also hits Landslide — point-in-polygon honesty, no
+  invented hits). `lib/adapters/kingcounty/sensitiveAreas.ts`.
+- ✅ **WA DNR liquefaction susceptibility — query, keyless:**
+  `https://gis.dnr.wa.gov/site3/rest/services/Public_Geology/Ground_Response/MapServer/0/query`.
+  Params: `geometry=<lon>,<lat>`, `geometryType=esriGeometryPoint`, `inSR=4326`
+  (server reprojects from WA State Plane 2927), `spatialRel=esriSpatialRelIntersects`,
+  `outFields=LIQUEFACTION_SUSCEPT`, `returnGeometry=false`, `f=json`. Returns the
+  susceptibility class string (e.g. Vashon → "Moderate to high" at the centroid).
+  `lib/adapters/wadnr/liquefaction.ts`.
+- A mapped **landslide** critical area additionally surfaces in the "What matters
+  here" synthesis header (priority 1.6, "may restrict building") — the one
+  critical area actionable enough to lead with. `lib/report/summary.ts`.
+
 ### USGS Earthquake Catalog
 - ✅ Keyless GeoJSON: `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=&longitude=&maxradiuskm=&starttime=&minmagnitude=&orderby=time`
 - We query 100 km / past 365 days / M2.5+. Feature: `properties.{mag,place,time(ms),url}`, `geometry.coordinates [lon,lat,depthKm]`.
