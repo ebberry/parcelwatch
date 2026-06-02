@@ -34,6 +34,17 @@ export const GLOSSARY = {
     "The smallest lot size this zone allows — the figure that determines whether you can subdivide.",
   appeal:
     "A formal challenge to your assessed value, filed with the King County Board of Equalization.",
+  liquefaction:
+    "When strong shaking makes water-saturated soil briefly behave like a liquid, which can damage foundations. 'Susceptibility' is how prone the ground here is.",
+  oss: "On-site Sewage System — a septic system that treats wastewater on your own property instead of a public sewer.",
+  groupB:
+    "A small private water system serving roughly 2–14 connections — common for rural clusters of homes, as opposed to a large utility (Group A).",
+  criticalArea:
+    "Land King County maps as environmentally sensitive — landslide, steep slope, erosion, wetland, and the like. Building there can carry extra requirements.",
+  expectedAnnualLoss:
+    "FEMA's modeled estimate of the average dollar loss per year from natural hazards for an area — a relative gauge, not a prediction for your specific home.",
+  nriComposite:
+    "FEMA's single 0–100 score combining 18 natural hazards for this census tract, expressed relative to the rest of the country.",
 } as const;
 
 export type GlossaryKey = keyof typeof GLOSSARY;

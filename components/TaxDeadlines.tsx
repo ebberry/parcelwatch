@@ -1,4 +1,5 @@
 import { CalendarClock } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
 import { Panel } from "@/components/Panel";
 import type { SourcedValue } from "@/lib/provenance";
 import type { TaxCalendar, Deadline } from "@/lib/tax/service";
@@ -45,7 +46,7 @@ export function TaxDeadlines({ sourced }: { sourced: SourcedValue<TaxCalendar> }
   return (
     <Panel title="Taxes & deadlines" icon={CalendarClock} sourced={sourced}>
       {!cal ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : (
         <>
           <ul className="divide-y-[0.5px] divide-pw-divider">

@@ -1,5 +1,8 @@
 import { ShieldAlert } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
+import { Term } from "@/components/Term";
 import { Panel, StatusPill, QuietNote, PanelInsight, type PillTone } from "@/components/Panel";
+import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import type { SiteRisk } from "@/lib/risk/service";
 
@@ -35,11 +38,12 @@ export function SiteRiskPanel({ sourced }: { sourced: SourcedValue<SiteRisk> }) 
       sourced={sourced}
     >
       {!r ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : (
         <>
           <p className="text-sm text-pw-sub">
-            This area&apos;s overall natural-hazard risk is{" "}
+            This area&apos;s overall{" "}
+            <Term define={GLOSSARY.nriComposite}>natural-hazard risk</Term> is{" "}
             <span className="font-medium text-pw-ink">
               {(r.compositeRating ?? "unrated").toLowerCase()}
             </span>

@@ -1,4 +1,5 @@
 import { FlaskConical } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
 import { Panel, StatusPill, QuietNote, PanelInsight, type PillTone } from "@/components/Panel";
 import type { SourcedValue } from "@/lib/provenance";
 import type { SmelterPlume } from "@/lib/risk/service";
@@ -26,7 +27,7 @@ export function SmelterPlumePanel({ sourced }: { sourced: SourcedValue<SmelterPl
       sourced={sourced}
     >
       {!v ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : (
         <>
           <p className="text-sm text-pw-sub">

@@ -1,5 +1,8 @@
 import { Waves } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
+import { Term } from "@/components/Term";
 import { Panel, StatusPill, Field, PanelInsight, QuietNote, type PillTone } from "@/components/Panel";
+import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import type { SepticStatus } from "@/lib/adapters/kingcounty/septic";
 
@@ -34,14 +37,15 @@ export function SepticPanel({ sourced }: { sourced: SourcedValue<SepticStatus> }
       sourced={sourced}
     >
       {!v ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : (
         <>
           {v.treatment === "septic" && (
             <p className="text-sm text-pw-sub">
-              This parcel is served by an on-site septic system (OSS), not a public
-              sewer — the owner maintains it, and it should be inspected on King
-              County&apos;s schedule.
+              This parcel is served by an on-site septic system (
+              <Term define={GLOSSARY.oss}>OSS</Term>), not a public sewer — the
+              owner maintains it, and it should be inspected on King County&apos;s
+              schedule.
             </p>
           )}
           {v.treatment === "sewer" && (

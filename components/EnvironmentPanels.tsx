@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Unavailable } from "@/components/Unavailable";
 import type { LucideIcon } from "lucide-react";
 import { Users } from "lucide-react";
 import { Panel, Field, QuietNote, MetricTile, PanelInsight } from "@/components/Panel";
@@ -26,7 +27,7 @@ export function NearbySitesPanel({
   return (
     <Panel title={title} icon={icon} sourced={sourced}>
       {!s ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : s.count === 0 ? (
         <QuietNote>{noneMessage}</QuietNote>
       ) : (
@@ -83,7 +84,7 @@ export function NeighborhoodPanel({
             to enable this panel.
           </p>
         ) : (
-          <p className="text-sm text-pw-faint">Not available</p>
+          <Unavailable source={sourced.source} />
         )
       ) : (
         <>

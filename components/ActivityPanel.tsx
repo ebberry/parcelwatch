@@ -1,4 +1,5 @@
 import { Landmark, Sparkles, ExternalLink } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
 import { Panel, QuietNote, StatusPill } from "@/components/Panel";
 import { topicLabel } from "@/lib/watches";
 import type { SourcedValue } from "@/lib/provenance";
@@ -32,7 +33,7 @@ export function ActivityPanel({ sourced }: { sourced: SourcedValue<CivicFeedItem
   return (
     <Panel title="In motion — your governments" icon={Landmark} sourced={sourced}>
       {!items ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : items.length === 0 ? (
         <QuietNote>
           No recent county, city, or state legislation that looks relevant to this

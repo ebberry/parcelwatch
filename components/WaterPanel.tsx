@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Unavailable } from "@/components/Unavailable";
 import { Droplets, Search } from "lucide-react";
 import { Panel } from "@/components/Panel";
 import { ProvenanceBadge } from "@/components/ProvenanceBadge";
@@ -205,7 +206,7 @@ export function WaterPanel({
       </div>
     );
   } else if (lookup == null) {
-    body = <p className="text-sm text-pw-faint">Not available</p>;
+    body = <Unavailable source={provenance.source} />;
     footer = <ProvenanceFooter {...provenance} />;
   } else if (lookup.found && lookup.system) {
     const s = lookup.system;

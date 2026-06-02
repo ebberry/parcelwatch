@@ -1,5 +1,8 @@
 import { Mountain } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
+import { Term } from "@/components/Term";
 import { Panel, StatusPill, QuietNote, Field, PanelInsight } from "@/components/Panel";
+import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import type { GeoHazards } from "@/lib/risk/service";
 
@@ -24,14 +27,15 @@ export function GeoHazardsPanel({ sourced }: { sourced: SourcedValue<GeoHazards>
       sourced={sourced}
     >
       {!v ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : (
         <>
           {v.criticalAreas.length > 0 ? (
             <>
               <p className="text-sm text-pw-sub">
-                This parcel falls within mapped King County critical-area
-                hazard{v.criticalAreas.length === 1 ? "" : "s"}:
+                This parcel falls within mapped King County{" "}
+                <Term define={GLOSSARY.criticalArea}>critical-area</Term> hazard
+                {v.criticalAreas.length === 1 ? "" : "s"}:
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {v.criticalAreas.map((h) => (
@@ -52,6 +56,7 @@ export function GeoHazardsPanel({ sourced }: { sourced: SourcedValue<GeoHazards>
               <Field
                 label="Liquefaction susceptibility (WA DNR)"
                 value={sentenceCase(v.liquefaction)}
+                tip={GLOSSARY.liquefaction}
               />
             </dl>
           )}

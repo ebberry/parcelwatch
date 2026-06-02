@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId } from "react";
+import { useState, useId, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Search, ChevronRight } from "lucide-react";
 import { titleCaseAddress } from "@/lib/format";
@@ -19,8 +19,9 @@ type State =
   | { status: "done"; candidates: Candidate[]; unavailable: boolean };
 
 /**
- * Address → parcel confirmation flow. The user types an address, we query King
- * County, and they pick the exact parcel from the candidate list. Accessible:
+ * Address → parcel confirmation flow with live (debounced) typeahead. The user
+ * types an address and matching parcels appear as they go; they pick the exact
+ * one. Submit still works (Enter / button) for an immediate search. Accessible:
  * labelled input, status announced via aria-live, results are keyboard links.
  */
 export function ParcelSearch() {
@@ -29,26 +30,29 @@ export function ParcelSearch() {
   const inputId = useId();
   const statusId = useId();
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const q = query.trim();
-    if (q.length < 3) {
-      setState({ status: "error", message: "Enter at least 3 characters." });
-      return;
-    }
+  // Guards: cancel the in-flight request and ignore out-of-order responses so
+  // the list always reflects the latest keystroke.
+  const abortRef = useRef<AbortController | null>(null);
+  const seqRef = useRef(0);
+
+  async function runSearch(q: string) {
+    const seq = ++seqRef.current;
+    abortRef.current?.abort();
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
     setState({ status: "loading" });
     try {
-      const res = await fetch(`/api/parcels/search?q=${encodeURIComponent(q)}`);
+      const res = await fetch(`/api/parcels/search?q=${encodeURIComponent(q)}`, {
+        signal: ctrl.signal,
+      });
       const data = (await res.json()) as {
         candidates?: Candidate[];
         unavailable?: boolean;
         message?: string;
       };
+      if (seq !== seqRef.current) return; // a newer keystroke superseded this one
       if (!res.ok) {
-        setState({
-          status: "error",
-          message: data.message ?? "Search failed. Please try again.",
-        });
+        setState({ status: "error", message: data.message ?? "Search failed. Please try again." });
         return;
       }
       setState({
@@ -56,12 +60,33 @@ export function ParcelSearch() {
         candidates: data.candidates ?? [],
         unavailable: Boolean(data.unavailable),
       });
-    } catch {
-      setState({
-        status: "error",
-        message: "Could not reach the server. Please try again.",
-      });
+    } catch (err) {
+      if ((err as Error)?.name === "AbortError" || seq !== seqRef.current) return;
+      setState({ status: "error", message: "Could not reach the server. Please try again." });
     }
+  }
+
+  // Live search: debounce keystrokes; reset to idle below the 3-char threshold.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 3) {
+      seqRef.current++; // invalidate any pending response
+      abortRef.current?.abort();
+      setState({ status: "idle" });
+      return;
+    }
+    const t = setTimeout(() => void runSearch(q), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const q = query.trim();
+    if (q.length < 3) {
+      setState({ status: "error", message: "Enter at least 3 characters." });
+      return;
+    }
+    void runSearch(q);
   }
 
   return (
@@ -75,7 +100,10 @@ export function ParcelSearch() {
           name="address"
           type="text"
           inputMode="text"
-          autoComplete="street-address"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={state.status === "done" && state.candidates.length > 0}
+          aria-controls={statusId}
           placeholder="e.g. 12825 SW Bachelor Rd, Vashon"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

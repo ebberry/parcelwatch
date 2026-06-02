@@ -1,4 +1,5 @@
 import { Waves, Activity } from "lucide-react";
+import { Unavailable } from "@/components/Unavailable";
 import { Panel, Field, StatusPill, QuietNote, PanelInsight } from "@/components/Panel";
 import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
@@ -30,7 +31,7 @@ export function FloodPanel({ sourced }: { sourced: SourcedValue<FloodHazard> }) 
   return (
     <Panel title="Flood risk" icon={Waves} pill={floodPill(f)} sourced={sourced}>
       {!f ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : !f.mapped ? (
         <p className="text-sm text-pw-sub">
           This location isn&apos;t covered by FEMA&apos;s mapped flood data.
@@ -92,7 +93,7 @@ export function SeismicPanel({ sourced }: { sourced: SourcedValue<SeismicActivit
   return (
     <Panel title="Earthquakes nearby" icon={Activity} sourced={sourced}>
       {!s ? (
-        <p className="text-sm text-pw-faint">Not available</p>
+        <Unavailable source={sourced.source} />
       ) : s.count === 0 ? (
         <QuietNote>
           No earthquakes of magnitude {s.minMagnitude}+ within {s.radiusMi} miles in
