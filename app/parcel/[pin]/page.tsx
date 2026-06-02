@@ -21,6 +21,8 @@ import { ZoningPanel } from "@/components/ZoningPanel";
 import { BrandMark } from "@/components/BrandMark";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { PanelSkeleton, SummarySkeleton } from "@/components/PanelSkeleton";
+import { ReportNav } from "@/components/ReportNav";
+import { groupSlug } from "@/lib/report/groups";
 import { loadParcel } from "./loaders";
 import {
   MapSection,
@@ -132,7 +134,18 @@ export default async function ParcelPage({
             <SynthesisSection p={p} lat={lat} lon={lon} />
           </Suspense>
 
-          <div className="mt-6 flex flex-col gap-7">
+          <div className="mt-6">
+            <ReportNav
+              sections={[
+                { id: groupSlug("Your money"), label: "Money" },
+                { id: groupSlug("The property"), label: "Property" },
+                { id: groupSlug("Risks & site"), label: "Risks" },
+                { id: groupSlug("Systems & services"), label: "Systems" },
+                { id: groupSlug("Around you"), label: "Around" },
+              ]}
+            />
+
+            <div className="flex flex-col gap-7">
             <ReportGroup label="Your money">
               <Panel title="Assessed value" icon={Landmark} sourced={sv}>
                 <div className="grid grid-cols-2 gap-3">
@@ -292,6 +305,7 @@ export default async function ParcelPage({
                 <span className="sr-only">(opens in a new tab)</span>
               </a>
             </section>
+            </div>
           </div>
 
           <footer className="mt-8 border-t-[0.5px] border-pw-divider pt-6 text-xs text-pw-faint">
@@ -306,7 +320,8 @@ export default async function ParcelPage({
 }
 
 /** A labelled group of panels — gives the report a money → property → risks →
- * context narrative instead of a flat, equal-weight stack. */
+ * context narrative instead of a flat, equal-weight stack. The id anchors the
+ * sticky section nav. */
 function ReportGroup({
   label,
   children,
@@ -315,7 +330,7 @@ function ReportGroup({
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section id={groupSlug(label)} className="scroll-mt-16">
       <h2 className="mb-3 px-1 text-xs font-medium uppercase tracking-wide text-pw-faint">
         {label}
       </h2>
