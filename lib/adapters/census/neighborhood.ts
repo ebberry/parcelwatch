@@ -29,7 +29,8 @@ function acsNum(v: string | null | undefined): number | null {
   return Number.isFinite(n) && n > -1e9 ? n : null;
 }
 
-async function geocodeTract(
+/** Coords → census tract (keyless Census geocoder). Shared by ACS + NRI. */
+export async function geocodeTract(
   lat: number,
   lon: number,
 ): Promise<{ state: string; county: string; tract: string; name: string } | null> {

@@ -4,6 +4,7 @@ import type { AppealRecommendation } from "@/lib/appeals";
 import type { FloodHazard } from "@/lib/adapters/fema";
 import type { TaxCalendar } from "@/lib/tax/deadlines";
 import type { NearbySites } from "@/lib/environment/nearby";
+import type { SiteRisk } from "@/lib/risk/service";
 
 const rec = (over: Partial<AppealRecommendation> = {}): AppealRecommendation => ({
   shouldAppeal: true,
@@ -34,7 +35,7 @@ const epa = (distanceMi: number, count = 3): NearbySites => ({
   nearest: [{ name: "Site", detail: null, distanceMi }],
 });
 
-const NONE = { recommendation: null, flood: null, seismic: null, epa: null, councilCount: 0, tax: null };
+const NONE = { recommendation: null, flood: null, seismic: null, siteRisk: null, epa: null, councilCount: 0, tax: null };
 
 describe("summarizeFindings", () => {
   it("leads with the appeal opportunity when one is recommended", () => {
@@ -62,6 +63,7 @@ describe("summarizeFindings", () => {
     const out = summarizeFindings({
       recommendation: rec(),
       flood: flood(),
+      siteRisk: null,
       tax: tax(10),
       epa: epa(0.2),
       councilCount: 5,
@@ -81,6 +83,27 @@ describe("summarizeFindings", () => {
   it("only surfaces a regulated site when it's genuinely close (<= 0.5 mi)", () => {
     expect(summarizeFindings({ ...NONE, epa: epa(0.3) }).some((f) => f.id === "epa")).toBe(true);
     expect(summarizeFindings({ ...NONE, epa: epa(1.4) }).some((f) => f.id === "epa")).toBe(false);
+  });
+
+  it("surfaces elevated natural-hazard risk, naming the top driver", () => {
+    const siteRisk: SiteRisk = {
+      tractName: "X",
+      compositeScore: 90,
+      compositeRating: "Relatively Moderate", // composite moderate…
+      statePercentile: 88,
+      ealTotal: 1,
+      topHazards: [{ code: "ERQK", name: "Earthquake", rating: "Relatively High", score: 80 }], // …but a high hazard
+    };
+    const out = summarizeFindings({ ...NONE, siteRisk });
+    const f = out.find((x) => x.id === "risk");
+    expect(f).toBeDefined();
+    expect(f!.title).toMatch(/Elevated earthquake risk \(relatively high\)/);
+    // Nothing high (moderate composite + only moderate hazards) → not surfaced.
+    const mod = summarizeFindings({
+      ...NONE,
+      siteRisk: { ...siteRisk, topHazards: [{ code: "LNDS", name: "Landslide", rating: "Relatively Moderate", score: 40 }] },
+    });
+    expect(mod.find((x) => x.id === "risk")).toBeUndefined();
   });
 
   it("falls back to a single 'all clear' finding when nothing qualifies", () => {

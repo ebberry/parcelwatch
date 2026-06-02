@@ -1,6 +1,7 @@
 import type { AppealRecommendation } from "@/lib/appeals";
 import type { FloodHazard } from "@/lib/adapters/fema";
 import type { SeismicActivity } from "@/lib/adapters/usgs";
+import type { SiteRisk } from "@/lib/risk/service";
 import type { NearbySites } from "@/lib/environment/nearby";
 import type { TaxCalendar } from "@/lib/tax/deadlines";
 
@@ -33,6 +34,7 @@ export function summarizeFindings(input: {
   recommendation: AppealRecommendation | null;
   flood: FloodHazard | null;
   seismic: SeismicActivity | null;
+  siteRisk: SiteRisk | null;
   epa: NearbySites | null;
   councilCount: number;
   tax: TaxCalendar | null;
@@ -70,6 +72,22 @@ export function summarizeFindings(input: {
         href: "#flood",
         title: `In a high-risk flood zone${zone ? ` (Zone ${zone})` : ""}`,
       },
+    });
+  }
+
+  // 2b. Elevated natural-hazard risk (NRI) — fires on a high composite OR a high
+  // individual hazard (e.g. Vashon's earthquake risk under a moderate composite).
+  const sr = input.siteRisk;
+  const highRatings = new Set(["Relatively High", "Very High"]);
+  const highHazard = sr?.topHazards.find((h) => h.rating != null && highRatings.has(h.rating));
+  const highComposite = sr != null && sr.compositeRating != null && highRatings.has(sr.compositeRating);
+  if (sr && (highComposite || highHazard)) {
+    const title = highHazard
+      ? `Elevated ${highHazard.name.toLowerCase()} risk (${highHazard.rating!.toLowerCase()})`
+      : `Elevated natural-hazard risk (${sr.compositeRating!.toLowerCase()})`;
+    ranked.push({
+      priority: 1.5,
+      finding: { id: "risk", tone: "attention", href: "#risk", title },
     });
   }
 

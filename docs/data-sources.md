@@ -155,6 +155,23 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
 - ⚠️ `STATIC_BFE = -9999` is a "no BFE" sentinel → normalize to null. `FIRM_PAN` is NOT on layer 28 (caused a 400).
 - Confirmed: inland Vashon → Zone X (SFHA F); near-shore → Zone VE (SFHA T, BFE 15 ft).
 
+### ⭐ FEMA National Risk Index (NRI) — Site Risk panel (shipped 2026-06-02)
+- ⛔ **Not in OpenFEMA** (no NRI dataset in the DataSets list — the research doc
+  was wrong about this). Use the **ArcGIS feature service** instead.
+- ✅ **Live, keyless:** `https://services.arcgis.com/XG15cJAlne2vxtgt/arcgis/rest/services/National_Risk_Index_Census_Tracts/FeatureServer/0/query`.
+  Query by `where=TRACTFIPS='<11-digit GEOID>'` — the same tract we derive for
+  ACS (`geocodeTract`, now exported from the census adapter).
+- **Fields used:** `RISK_SCORE`/`RISK_RATNG`/`RISK_SPCTL` (composite + state
+  percentile), `EAL_VALT` (expected annual loss), and per-hazard
+  `<CODE>_RISKS`/`<CODE>_RISKR` for the 18 hazards (AVLN, CFLD, CWAV, DRGT,
+  ERQK, HAIL, HWAV, HRCN, ISTM, LNDS, LTNG, RFLD, SWND, TRND, TSUN, VLCN, WFIR,
+  WNTW). We surface the composite + the hazards rated ≥ "Relatively Moderate".
+- Confirmed live for the Vashon tract `53033027702`: composite "Relatively
+  Moderate" (84th pct WA), Earthquake "Relatively High", Landslide/Coastal-
+  flooding "Relatively Moderate". `lib/adapters/fema/nri.ts`, `lib/risk/service.ts`,
+  `components/SiteRiskPanel.tsx`. Honesty: relative modeled national index, labeled
+  "not a site-specific assessment". (NRI data current v1.20, Dec 2025.)
+
 ### USGS Earthquake Catalog
 - ✅ Keyless GeoJSON: `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=&longitude=&maxradiuskm=&starttime=&minmagnitude=&orderby=time`
 - We query 100 km / past 365 days / M2.5+. Feature: `properties.{mag,place,time(ms),url}`, `geometry.coordinates [lon,lat,depthKm]`.
