@@ -7,6 +7,7 @@ import {
   getValuationsByPins,
   type ParcelValuation,
 } from "@/lib/adapters/kingcounty/comparables";
+import { getBuildingByPins, type BuildingChars } from "@/lib/adapters/kingcounty/building";
 import type { ParcelCore } from "@/lib/adapters/kingcounty/parcel";
 import { haversineKm } from "@/lib/geo";
 import { unavailable, type SourcedValue } from "@/lib/provenance";
@@ -18,8 +19,9 @@ import { unavailable, type SourcedValue } from "@/lib/provenance";
  *
  * Honest framing: these are REAL recorded sales (excise records), the strongest
  * appeal evidence under WA law (RCW 84.40.0301 — true and fair market value).
- * They are NOT size-normalized — King County publishes no keyless living-area
- * feed — so this is a market screen, not a formal appraisal. Never modeled.
+ * When the EXTR_ResBldg ingest has run, comps are size-normalized to
+ * $/living-sqft (and a size-adjusted value indicator is derived); otherwise it
+ * degrades to a raw market screen. Never a modeled/AVM valuation.
  */
 
 export interface SaleComp {
@@ -34,6 +36,10 @@ export interface SaleComp {
   assessedTotal: number | null;
   /** Assessed ÷ sale price, as a percentage (<100 = assessed below its sale). */
   assessedToSalePct: number | null;
+  /** Living area (sqft) from EXTR_ResBldg, when ingested. */
+  sqftLiving: number | null;
+  /** Sale price ÷ living sqft — the size-normalized comp metric. */
+  pricePerSqFt: number | null;
 }
 
 /** The subject parcel's own most recent qualifying sale, if any. */
@@ -60,6 +66,11 @@ export interface SaleCompSet {
   subjectAssessedTotal: number | null;
   /** Subject's OWN assessed-to-sale ratio, as % — only when it sold recently. */
   subjectAssessedToSalePct: number | null;
+  /** Subject living area (sqft), and the median comp $/sqft — size normalization. */
+  subjectSqftLiving: number | null;
+  medianPricePerSqFt: number | null;
+  /** Size-adjusted market value: median comp $/sqft × subject sqft. */
+  subjectValueBySqFt: number | null;
   /** Subject assessed vs comparable median sale, as % (+ = assessed above market). */
   assessedVsMedianSalePct: number | null;
   /** Heuristic: assessed value materially exceeds comparable sale prices. */
@@ -119,6 +130,7 @@ export function buildSaleCompSet(
   rawNearby: RawSale[],
   rawSubjectSales: RawSale[] = [],
   valuationByPin: Map<string, ParcelValuation> = new Map(),
+  buildingByPin: Map<string, BuildingChars> = new Map(),
 ): SaleCompSet {
   const { keepUses, improved } = subjectProfile(subject);
   const assessed = subject.assessment?.appraisedTotal ?? null;
@@ -138,6 +150,7 @@ export function buildSaleCompSet(
   const comps: SaleComp[] = pool
     .map((s) => {
       const assessedTotal = valuationByPin.get(s.pin)?.assessedTotal ?? null;
+      const sqftLiving = buildingByPin.get(s.pin)?.sqftLiving ?? null;
       return {
         pin: s.pin,
         address: s.address ?? valuationByPin.get(s.pin)?.address ?? null,
@@ -154,6 +167,11 @@ export function buildSaleCompSet(
           assessedTotal != null && s.salePrice && s.salePrice > 0
             ? Math.round((assessedTotal / s.salePrice) * 100)
             : null,
+        sqftLiving,
+        pricePerSqFt:
+          sqftLiving && sqftLiving > 0 && s.salePrice
+            ? Math.round(s.salePrice / sqftLiving)
+            : null,
       };
     })
     .sort((a, b) => (a.distanceKm ?? 1e9) - (b.distanceKm ?? 1e9))
@@ -167,6 +185,14 @@ export function buildSaleCompSet(
   const medianRatio = median(
     comps.map((c) => c.assessedToSalePct).filter((n): n is number => n != null),
   );
+  const medianPricePerSqFt = median(
+    comps.map((c) => c.pricePerSqFt).filter((n): n is number => n != null),
+  );
+  const subjectSqftLiving = buildingByPin.get(subject.pin)?.sqftLiving ?? null;
+  const subjectValueBySqFt =
+    medianPricePerSqFt && subjectSqftLiving && subjectSqftLiving > 0
+      ? Math.round((medianPricePerSqFt * subjectSqftLiving) / 1000) * 1000
+      : null;
   const dates = comps.map((c) => c.saleDate!).filter(Boolean).sort();
 
   const vsPct =
@@ -199,6 +225,9 @@ export function buildSaleCompSet(
     highSalePrice: prices.length ? Math.max(...prices) : null,
     medianAssessedTotal: medianAssessed,
     medianAssessedToSalePct: medianRatio,
+    subjectSqftLiving,
+    medianPricePerSqFt,
+    subjectValueBySqFt,
     subjectAssessedTotal: assessed,
     subjectAssessedToSalePct:
       assessed != null && ownSale?.salePrice
@@ -229,11 +258,15 @@ export async function getSaleComps(
       }),
       getSalesByPin(subject.pin).catch(() => [] as RawSale[]),
     ]);
-    // Join the county's current assessment onto each comparable home (by PIN).
-    const valuations = await getValuationsByPins(nearby.map((s) => s.pin)).catch(
-      () => new Map<string, ParcelValuation>(),
-    );
-    const set = buildSaleCompSet(subject, nearby, own, valuations);
+    // Join the county's current assessment + living-area sqft onto each comp.
+    const pins = [subject.pin, ...nearby.map((s) => s.pin)];
+    const [valuations, buildings] = await Promise.all([
+      getValuationsByPins(nearby.map((s) => s.pin)).catch(
+        () => new Map<string, ParcelValuation>(),
+      ),
+      getBuildingByPins(pins).catch(() => new Map<string, BuildingChars>()),
+    ]);
+    const set = buildSaleCompSet(subject, nearby, own, valuations, buildings);
     if (!set.comps.length && !set.subjectSale) return unavailable(source);
     return {
       value: set,

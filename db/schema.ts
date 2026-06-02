@@ -71,6 +71,25 @@ export const aiSummaries = pgTable(
   (t) => ({ pk: primaryKey({ columns: [t.externalId, t.areaKey] }) }),
 );
 
+/**
+ * Residential building characteristics, ingested from the King County Assessor
+ * bulk extract `EXTR_ResBldg.csv` (weekly). This is the ONLY source of
+ * living-area square footage (no keyless live API), which unlocks $/living-sqft
+ * comparables in the appeal builder. Keyed by PIN (Major+Minor), primary
+ * building. Built-environment facts only — no owner-name fields ingested.
+ */
+export const kcResBldg = pgTable("kc_res_bldg", {
+  pin: text("pin").primaryKey(),
+  sqftLiving: integer("sqft_living"),
+  yearBuilt: integer("year_built"),
+  bedrooms: integer("bedrooms"),
+  bathFull: integer("bath_full"),
+  grade: integer("grade"),
+  /** Source file's published date (honest freshness), set per ingest run. */
+  sourceDate: text("source_date"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 /** Generated alerts — the in-app feed. */
 export const alerts = pgTable(
   "alerts",

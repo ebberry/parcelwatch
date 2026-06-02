@@ -479,8 +479,9 @@ export function AppealBuilder({
                   <th className="py-1">Sale date</th>
                   <th className="py-1">Address</th>
                   <th className="py-1 text-right">Sale price</th>
+                  <th className="py-1 text-right">Sq ft</th>
+                  <th className="py-1 text-right">$/sq ft</th>
                   <th className="py-1 text-right">Assessed value</th>
-                  <th className="py-1 text-right">Assd/sale</th>
                   <th className="py-1 text-right">Distance</th>
                 </tr>
               </thead>
@@ -490,20 +491,18 @@ export function AppealBuilder({
                     <td className="py-1 tabular-nums">{fmtDate(c.saleDate)}</td>
                     <td className="py-1">{c.address ?? c.pin}</td>
                     <td className="py-1 text-right tabular-nums">{usd(c.salePrice)}</td>
+                    <td className="py-1 text-right tabular-nums">{c.sqftLiving?.toLocaleString() ?? "—"}</td>
+                    <td className="py-1 text-right tabular-nums">{usd(c.pricePerSqFt)}</td>
                     <td className="py-1 text-right tabular-nums">{usd(c.assessedTotal)}</td>
-                    <td className="py-1 text-right tabular-nums">
-                      {c.assessedToSalePct != null ? `${c.assessedToSalePct}%` : "—"}
-                    </td>
                     <td className="py-1 text-right tabular-nums">{fmtMiles(c.distanceKm)}</td>
                   </tr>
                 ))}
                 <tr className="font-semibold">
                   <td className="py-1" colSpan={2}>Median</td>
                   <td className="py-1 text-right tabular-nums">{usd(sale?.medianSalePrice)}</td>
+                  <td className="py-1 text-right tabular-nums">{sale?.subjectSqftLiving?.toLocaleString() ?? "—"}</td>
+                  <td className="py-1 text-right tabular-nums">{usd(sale?.medianPricePerSqFt)}</td>
                   <td className="py-1 text-right tabular-nums">{usd(sale?.medianAssessedTotal)}</td>
-                  <td className="py-1 text-right tabular-nums">
-                    {sale?.medianAssessedToSalePct != null ? `${sale.medianAssessedToSalePct}%` : "—"}
-                  </td>
                   <td className="py-1" />
                 </tr>
               </tbody>
@@ -518,7 +517,15 @@ export function AppealBuilder({
               {sale?.assessedVsMedianSalePct != null && (
                 <> ({sale.assessedVsMedianSalePct > 0 ? "+" : ""}{sale.assessedVsMedianSalePct}% vs median sale)</>
               )}
-              . Recorded sales, not size/condition-adjusted; sale and assessment dates may differ.
+              .
+              {sale?.subjectValueBySqFt != null && sale?.medianPricePerSqFt != null && (
+                <>
+                  {" "}Size-adjusted: the median {usd(sale.medianPricePerSqFt)}/sq ft applied to this
+                  home&apos;s {sale.subjectSqftLiving?.toLocaleString()} sq ft implies ≈{" "}
+                  {usd(sale.subjectValueBySqFt)}.
+                </>
+              )}
+              {" "}Sale and assessment dates may differ.
             </p>
           </>
         )}

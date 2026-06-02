@@ -6,12 +6,26 @@ import {
   enqueuePollNow,
 } from "@/lib/watches/queue";
 import { runAllWatches } from "@/lib/watches/engine";
+import { ingestResBldg } from "@/lib/ingest/resbldg";
 
 /**
  * Watch poller worker. Run with: `npm run worker`.
- * Processes "poll" jobs by running every watch (fetch → diff → alert), and
- * registers the repeatable 6-hour schedule on startup.
+ * Processes "poll" jobs by running every watch (fetch → diff → alert), registers
+ * the repeatable 6-hour schedule, and ingests the weekly Assessor EXTR_ResBldg
+ * extract (living-area sqft) on startup + once a day.
  */
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Refresh living-area sqft from the weekly bulk extract. Non-fatal on failure. */
+async function refreshResBldg() {
+  try {
+    const r = await ingestResBldg();
+    console.log(`[ingest] EXTR_ResBldg: ${r.rows} rows (${(r.durationMs / 1000).toFixed(0)}s) · ${r.sourceDate}`);
+  } catch (err) {
+    console.error("[ingest] EXTR_ResBldg failed (will retry tomorrow):", (err as Error).message);
+  }
+}
 
 const worker = new Worker(
   WATCH_QUEUE,
@@ -30,6 +44,10 @@ async function main() {
   await scheduleWatchPolling();
   await enqueuePollNow(); // run once on startup
   console.log("Watch worker started — repeatable poll every 6h registered.");
+
+  // Ingest living-area sqft now (non-blocking) and daily thereafter.
+  void refreshResBldg();
+  setInterval(() => void refreshResBldg(), DAY_MS).unref();
 }
 
 main().catch((err) => {

@@ -206,7 +206,7 @@ export type AppealStrength = "strong" | "moderate" | "weak" | "none";
 
 /** One real, cited data point that indicates value (never a model output). */
 export interface ValueIndicator {
-  key: "purchase" | "sales" | "equity" | "uniformity";
+  key: "purchase" | "sqft" | "sales" | "equity" | "uniformity";
   label: string;
   value: number;
 }
@@ -262,8 +262,18 @@ export function buildRecommendation(input: {
       value: purchase.salePrice,
     });
   }
-  const salesMedian = input.sale?.medianSalePrice ?? null;
+  // Size-adjusted: median comp $/living-sqft × this home's sqft — the strongest
+  // market indicator (apples-to-apples), available once EXTR_ResBldg is ingested.
+  const bySqFt = input.sale?.subjectValueBySqFt ?? null;
   const nComps = input.sale?.comps.length ?? 0;
+  if (bySqFt != null && input.sale?.medianPricePerSqFt != null && input.sale?.subjectSqftLiving) {
+    indicators.push({
+      key: "sqft",
+      label: `comparable sales at ~${usd(input.sale.medianPricePerSqFt)}/sq ft applied to this home's ${input.sale.subjectSqftLiving.toLocaleString()} sq ft (${usd(bySqFt)})`,
+      value: bySqFt,
+    });
+  }
+  const salesMedian = input.sale?.medianSalePrice ?? null;
   if (salesMedian != null && nComps > 0) {
     indicators.push({
       key: "sales",
@@ -322,9 +332,10 @@ export function buildRecommendation(input: {
   // strongest of those, by priority — never an average (that would be an AVM).
   const PRIORITY: Record<ValueIndicator["key"], number> = {
     purchase: 0,
-    equity: 1,
-    sales: 2,
-    uniformity: 3,
+    sqft: 1, // size-adjusted sales — strongest market evidence after a recent sale
+    equity: 2,
+    sales: 3,
+    uniformity: 4,
   };
   const reductionCandidates = indicators
     .filter((i) => i.value < assessed)
@@ -349,6 +360,7 @@ export function buildRecommendation(input: {
     const corroborating = below.length; // how many indicators independently agree
     if (
       (primary.key === "purchase" && reductionPct >= 10) ||
+      (primary.key === "sqft" && nComps >= 4 && reductionPct >= 10) ||
       (primary.key === "sales" && nComps >= 5 && reductionPct >= 15)
     ) {
       // A pure equity/ratio argument tops out at "moderate" — the Board may read

@@ -211,11 +211,25 @@ clerk code + the March 2026 ADU permit sheet. Cite the current sections:
   filing wherever one exists (it's free and low-risk). It will NOT manufacture a
   case where none exists, and it always discloses that the Board can sustain,
   lower, or rarely raise the value. See `lib/appeals` `OWNER_FACTOR_KEYS`.
-- 📋 **Living-area ($/sqft) comps — proposed, not built:** the one missing
-  dimension is building size (no keyless live sqft feed). Spec for ingesting the
-  Assessor bulk extracts (`EXTR_ResBldg`/`EXTR_RPSale`) lives in
-  `docs/specs/living-area-comps.md` — adds a size-adjusted recommendation
-  indicator. Verify URLs/fields live (Rule #1) before building.
+- ✅ **Living-area ($/sqft) comps — SHIPPED 2026-06-02.** We ingest the Assessor
+  bulk extract `EXTR_ResBldg` (the only source of living-area sqft — no keyless
+  live feed) into Postgres (`kc_res_bldg`).
+  - **Verified live (Rule #1):** zip at
+    `https://aqua.kingcounty.gov/extranet/assessor/Residential%20Building.zip`
+    (21 MB; single `EXTR_ResBldg.csv`, ~532k rows, dated 2026-05-29). Columns
+    confirmed: `Major`(1) `Minor`(2) `BldgNbr`(3) `BldgGrade`(14)
+    `SqFtTotLiving`(22) `Bedrooms`(36) `BathFullCount`(39) `YrBuilt`(44).
+    PIN = `Major`+`Minor` (zero-padded 6+4). Primary building (`BldgNbr=1`).
+  - **Pipeline:** `lib/ingest/resbldg.ts` (stream-unzip via `fflate`, scan for
+    newlines, batch-upsert). The worker runs it on startup + daily; also
+    `npm run ingest:resbldg`. Read path: `getBuildingByPins` →
+    `lib/adapters/kingcounty/building.ts`.
+  - **Wired:** `SaleComp` gains `sqftLiving`/`pricePerSqFt`; `SaleCompSet` gains
+    `subjectSqftLiving`/`medianPricePerSqFt`/`subjectValueBySqFt`; a new `sqft`
+    value indicator (median comp $/sqft × subject sqft) ranks just under a recent
+    purchase in `buildRecommendation`. Degrades to non-size-adjusted if the table
+    isn't ingested. (`EXTR_Parcel`/`EXTR_RPAcct` for legal-desc/tax restoration:
+    still a follow-up.)
 - **eAppeals portal (file online, owner login):** `https://blue.kingcounty.gov/assessor/eappeals/RPLookup.aspx` (200 OK).
 - **BOE petition forms (mail filing):** `https://kingcounty.gov/en/independents/governance-and-leadership/government-oversight/board-appeals-equalization/appeals-forms` (200 OK).
 - Deadline rule (computed): 60 days from value notice or July 1, whichever later.
