@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import {
   Bell,
@@ -6,50 +7,37 @@ import {
   Home,
   Landmark,
   Ruler,
-  Factory,
   ExternalLink,
 } from "lucide-react";
-import { getParcelCore } from "@/lib/parcels/service";
-import { getComparables } from "@/lib/comps/service";
-import { getSaleComps } from "@/lib/sales/service";
-import { buildRecommendation } from "@/lib/appeals";
 import { getTaxCalendar } from "@/lib/tax/service";
 import { getZoningAnalysis } from "@/lib/zoning/service";
-import { getFloodHazard, getSeismicActivity } from "@/lib/hazards/service";
-import { getSiteRisk, getGeoHazards, getSoilContamination } from "@/lib/risk/service";
-import {
-  getEpaSites,
-  getWaterSystem,
-  getNeighborhoodStats,
-  censusKeyConfigured,
-} from "@/lib/environment/service";
-import { getCivicActivity } from "@/lib/watches/service";
-import { resolveArea } from "@/lib/watches/area";
+import { censusKeyConfigured } from "@/lib/environment/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
-import { getSepticStatus } from "@/lib/adapters/kingcounty/septic";
-import { getParcelBoundary } from "@/lib/adapters/kingcounty/boundary";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { titleCaseAddress } from "@/lib/format";
 import { Panel, Field, MetricTile, PanelInsight } from "@/components/Panel";
-import { summarizeFindings } from "@/lib/report/summary";
-import { ReportSummary } from "@/components/ReportSummary";
-import { WatchProperty } from "@/components/WatchProperty";
-import { getSession } from "@/lib/auth";
-import { getActiveWatchKinds } from "@/lib/watches/service";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
 import { ZoningPanel } from "@/components/ZoningPanel";
-import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
-import { NearbySitesPanel, NeighborhoodPanel } from "@/components/EnvironmentPanels";
-import { WaterPanel } from "@/components/WaterPanel";
-import { ActivityPanel } from "@/components/ActivityPanel";
-import { SiteRiskPanel } from "@/components/SiteRiskPanel";
-import { GeoHazardsPanel } from "@/components/GeoHazardsPanel";
-import { SmelterPlumePanel } from "@/components/SmelterPlumePanel";
-import { SepticPanel } from "@/components/SepticPanel";
-import { ParcelMap } from "@/components/ParcelMap";
-import { AppealCallout } from "@/components/AppealCallout";
-import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { BrandMark } from "@/components/BrandMark";
+import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
+import { PanelSkeleton, SummarySkeleton } from "@/components/PanelSkeleton";
+import { loadParcel } from "./loaders";
+import {
+  MapSection,
+  SynthesisSection,
+  AppealSection,
+  SiteRiskSection,
+  GeoHazardsSection,
+  SoilSection,
+  FloodSection,
+  SeismicSection,
+  EpaSection,
+  SepticSection,
+  WaterSection,
+  NeighborhoodSection,
+  ActivitySection,
+  WatchSection,
+} from "./sections";
 
 export async function generateMetadata({
   params,
@@ -57,7 +45,7 @@ export async function generateMetadata({
   params: Promise<{ pin: string }>;
 }): Promise<Metadata> {
   const { pin } = await params;
-  const sv = await getParcelCore(pin);
+  const sv = await loadParcel(pin);
   const addr = titleCaseAddress(sv.value?.address ?? null);
   return {
     title: addr ? `${addr} — ParcelWatch` : `Parcel ${pin} — ParcelWatch`,
@@ -78,7 +66,9 @@ export default async function ParcelPage({
   params: Promise<{ pin: string }>;
 }) {
   const { pin } = await params;
-  const sv = await getParcelCore(pin);
+  // Parcel core is the only blocking fetch — it defines the page shell (header,
+  // map, lat/lon). Everything else streams in via <Suspense> sections below.
+  const sv = await loadParcel(pin);
   const p = sv.value;
   const assessment = p?.assessment ?? null;
   const propertyType = decodePropertyType(p?.propertyType ?? null);
@@ -86,45 +76,7 @@ export default async function ParcelPage({
   const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
-  const [flood, seismic, siteRisk, geoHazards, soil, septic, boundary, epa, water, neighborhood, councilActivity, compSv, saleSv] =
-    await Promise.all([
-      getFloodHazard(lat, lon),
-      getSeismicActivity(lat, lon),
-      getSiteRisk(lat, lon),
-      getGeoHazards(lat, lon),
-      getSoilContamination(lat, lon),
-      getSepticStatus(p?.pin ?? null),
-      getParcelBoundary(p?.pin ?? null),
-      getEpaSites(lat, lon),
-      getWaterSystem(lat, lon),
-      getNeighborhoodStats(lat, lon),
-      getCivicActivity(resolveArea({ city: p?.city ?? null })),
-      p ? getComparables(p) : Promise.resolve(null),
-      p ? getSaleComps(p) : Promise.resolve(null),
-    ]);
   const needsCensusKey = !censusKeyConfigured();
-  const recommendation = p
-    ? buildRecommendation({
-        assessedTotal: p.assessment?.appraisedTotal ?? null,
-        sale: saleSv?.value ?? null,
-        comp: compSv?.value ?? null,
-      })
-    : null;
-  const findings = summarizeFindings({
-    recommendation,
-    flood: flood.value,
-    seismic: seismic.value,
-    siteRisk: siteRisk.value,
-    criticalAreas: geoHazards.value?.criticalAreas ?? [],
-    soil: soil.value,
-    epa: epa.value,
-    councilCount: councilActivity.value?.length ?? 0,
-    tax: taxCalendar.value,
-  });
-  // Which change-watches the signed-in owner already has on this parcel.
-  const session = p ? await getSession() : null;
-  const activeWatchKinds =
-    session && p ? await getActiveWatchKinds(session.userId, p.pin) : new Set<string>();
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
@@ -172,13 +124,13 @@ export default async function ParcelPage({
             </p>
           </header>
 
-          {boundary && (
-            <div className="mb-6">
-              <ParcelMap ring={boundary.ring} address={p.address} />
-            </div>
-          )}
+          <Suspense fallback={null}>
+            <MapSection pin={p.pin} address={p.address} />
+          </Suspense>
 
-          <ReportSummary findings={findings} />
+          <Suspense fallback={<SummarySkeleton />}>
+            <SynthesisSection p={p} lat={lat} lon={lon} />
+          </Suspense>
 
           <div className="mt-6 flex flex-col gap-7">
             <ReportGroup label="Your money">
@@ -215,11 +167,9 @@ export default async function ParcelPage({
                 </PanelInsight>
               </Panel>
 
-              {recommendation && (
-                <div id="appeal" className="scroll-mt-4">
-                  <AppealCallout pin={p.pin} rec={recommendation} />
-                </div>
-              )}
+              <Suspense fallback={<PanelSkeleton title="Checking for an appeal opportunity…" lines={2} />}>
+                <AppealSection p={p} />
+              </Suspense>
 
               <div id="tax" className="scroll-mt-4">
                 <TaxDeadlines sourced={taxCalendar} />
@@ -255,62 +205,69 @@ export default async function ParcelPage({
 
             <ReportGroup label="Risks & site">
               <div id="risk" className="scroll-mt-4">
-                <SiteRiskPanel sourced={siteRisk} />
+                <Suspense fallback={<PanelSkeleton title="Natural hazard risk" />}>
+                  <SiteRiskSection lat={lat} lon={lon} />
+                </Suspense>
               </div>
 
               <div id="geo" className="scroll-mt-4">
-                <GeoHazardsPanel sourced={geoHazards} />
+                <Suspense fallback={<PanelSkeleton title="Critical areas & geology" />}>
+                  <GeoHazardsSection lat={lat} lon={lon} />
+                </Suspense>
               </div>
 
               <div id="soil" className="scroll-mt-4">
-                <SmelterPlumePanel sourced={soil} />
+                <Suspense fallback={<PanelSkeleton title="Soil contamination" />}>
+                  <SoilSection lat={lat} lon={lon} />
+                </Suspense>
               </div>
 
               <div id="flood" className="scroll-mt-4">
-                <FloodPanel sourced={flood} />
+                <Suspense fallback={<PanelSkeleton title="Flood hazard" />}>
+                  <FloodSection lat={lat} lon={lon} />
+                </Suspense>
               </div>
 
               <div id="seismic" className="scroll-mt-4">
-                <SeismicPanel sourced={seismic} />
+                <Suspense fallback={<PanelSkeleton title="Earthquakes nearby" />}>
+                  <SeismicSection lat={lat} lon={lon} />
+                </Suspense>
               </div>
 
               <div id="epa" className="scroll-mt-4">
-                <NearbySitesPanel
-                  title="EPA-regulated sites nearby"
-                  icon={Factory}
-                  sourced={epa}
-                  noneMessage="No EPA-regulated facilities within 2 miles."
-                  insight="Most EPA-listed sites are routine registrations — fuel tanks, dry cleaners, small facilities — not active contamination. Distance matters: a site next door is worth a closer look; one a mile or two away usually isn't."
-                />
+                <Suspense fallback={<PanelSkeleton title="EPA-regulated sites nearby" />}>
+                  <EpaSection lat={lat} lon={lon} />
+                </Suspense>
               </div>
-
             </ReportGroup>
 
             <ReportGroup label="Systems & services">
               <div id="septic" className="scroll-mt-4">
-                <SepticPanel sourced={septic} />
+                <Suspense fallback={<PanelSkeleton title="Wastewater (septic / sewer)" />}>
+                  <SepticSection pin={p.pin} />
+                </Suspense>
               </div>
 
-              <WaterPanel
-                parcelId={p.pin}
-                lookup={water.value}
-                provenance={{
-                  source: water.source,
-                  fetchedAt: water.fetchedAt,
-                  confidence: water.confidence,
-                }}
-              />
+              <Suspense fallback={<PanelSkeleton title="Water system" />}>
+                <WaterSection pin={p.pin} lat={lat} lon={lon} />
+              </Suspense>
             </ReportGroup>
 
             <ReportGroup label="Around you">
-              <NeighborhoodPanel sourced={neighborhood} needsKey={needsCensusKey} />
+              <Suspense fallback={<PanelSkeleton title="Neighborhood" />}>
+                <NeighborhoodSection lat={lat} lon={lon} needsKey={needsCensusKey} />
+              </Suspense>
 
               <div id="activity" className="scroll-mt-4">
-                <ActivityPanel sourced={councilActivity} />
+                <Suspense fallback={<PanelSkeleton title="County council activity" />}>
+                  <ActivitySection city={p.city} />
+                </Suspense>
               </div>
             </ReportGroup>
 
-            <WatchProperty parcelId={p.pin} active={activeWatchKinds} />
+            <Suspense fallback={null}>
+              <WatchSection pin={p.pin} />
+            </Suspense>
 
             <section
               aria-label="Official county record"
