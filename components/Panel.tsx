@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { InfoTip } from "@/components/InfoTip";
@@ -17,6 +17,7 @@ export function Panel({
   icon: Icon,
   pill,
   sourced,
+  collapsible = false,
   children,
 }: {
   title: string;
@@ -24,34 +25,69 @@ export function Panel({
   pill?: ReactNode;
   /** When provided, renders the provenance line in the footer. */
   sourced?: SourcedValue<unknown>;
+  /**
+   * Low-signal ("all clear") panel: render collapsed by default as a one-line
+   * row that expands on demand. Native <details> — accessible, no JS needed.
+   */
+  collapsible?: boolean;
   children: ReactNode;
 }) {
+  const heading = (
+    <h2 className="flex items-center gap-2 text-[15px] font-medium text-pw-ink">
+      {Icon && (
+        <Icon
+          className="h-[18px] w-[18px] shrink-0 text-pw-accent"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        />
+      )}
+      {title}
+    </h2>
+  );
+
+  const body = (
+    <>
+      <div>{children}</div>
+      {sourced ? (
+        <div className="mt-4 border-t-[0.5px] border-pw-divider pt-3">
+          <ProvenanceBadgeFor sourced={sourced} />
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (collapsible) {
+    return (
+      <details className="group rounded-xl border-[0.5px] border-pw-border bg-pw-card [&>summary::-webkit-details-marker]:hidden">
+        <summary
+          aria-label={title}
+          className="flex cursor-pointer list-none items-center gap-3 p-5"
+        >
+          {heading}
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {pill}
+            <ChevronDown
+              className="h-4 w-4 text-pw-faint transition-transform group-open:rotate-180"
+              strokeWidth={1.75}
+              aria-hidden="true"
+            />
+          </div>
+        </summary>
+        <div className="px-5 pb-5">{body}</div>
+      </details>
+    );
+  }
+
   return (
     <section
       aria-label={title}
       className="rounded-xl border-[0.5px] border-pw-border bg-pw-card p-5"
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-[15px] font-medium text-pw-ink">
-          {Icon && (
-            <Icon
-              className="h-[18px] w-[18px] shrink-0 text-pw-accent"
-              strokeWidth={1.75}
-              aria-hidden="true"
-            />
-          )}
-          {title}
-        </h2>
+        {heading}
         {pill ? <div className="shrink-0">{pill}</div> : null}
       </div>
-
-      <div>{children}</div>
-
-      {sourced ? (
-        <div className="mt-4 border-t-[0.5px] border-pw-divider pt-3">
-          <ProvenanceBadgeFor sourced={sourced} />
-        </div>
-      ) : null}
+      {body}
     </section>
   );
 }

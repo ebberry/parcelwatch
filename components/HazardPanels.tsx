@@ -28,8 +28,9 @@ function floodPill(f: FloodHazard | null) {
 
 export function FloodPanel({ sourced }: { sourced: SourcedValue<FloodHazard> }) {
   const f = sourced.value;
+  const quiet = f != null && f.mapped && !f.inSFHA;
   return (
-    <Panel title="Flood risk" icon={Waves} pill={floodPill(f)} sourced={sourced}>
+    <Panel title="Flood risk" icon={Waves} pill={floodPill(f)} sourced={sourced} collapsible={quiet}>
       {!f ? (
         <Unavailable source={sourced.source} />
       ) : !f.mapped ? (
@@ -90,8 +91,15 @@ function QuakeRow({ q }: { q: Earthquake }) {
 
 export function SeismicPanel({ sourced }: { sourced: SourcedValue<SeismicActivity> }) {
   const s = sourced.value;
+  const quiet = s != null && s.count === 0;
   return (
-    <Panel title="Earthquakes nearby" icon={Activity} sourced={sourced}>
+    <Panel
+      title="Earthquakes nearby"
+      icon={Activity}
+      sourced={sourced}
+      collapsible={quiet}
+      pill={quiet ? <StatusPill tone="good">None nearby</StatusPill> : undefined}
+    >
       {!s ? (
         <Unavailable source={sourced.source} />
       ) : s.count === 0 ? (

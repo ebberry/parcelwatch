@@ -19,12 +19,20 @@ function sentenceCase(s: string): string {
 export function GeoHazardsPanel({ sourced }: { sourced: SourcedValue<GeoHazards> }) {
   const v = sourced.value;
   const count = v?.criticalAreas.length ?? 0;
+  const quiet = v != null && count === 0;
   return (
     <Panel
       title="Critical areas & geology"
       icon={Mountain}
-      pill={count > 0 ? <StatusPill tone="watch">{count} mapped here</StatusPill> : undefined}
+      pill={
+        count > 0 ? (
+          <StatusPill tone="watch">{count} mapped here</StatusPill>
+        ) : quiet ? (
+          <StatusPill tone="good">None mapped</StatusPill>
+        ) : undefined
+      }
       sourced={sourced}
+      collapsible={quiet}
     >
       {!v ? (
         <Unavailable source={sourced.source} />

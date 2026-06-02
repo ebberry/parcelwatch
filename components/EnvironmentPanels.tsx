@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Unavailable } from "@/components/Unavailable";
 import type { LucideIcon } from "lucide-react";
 import { Users } from "lucide-react";
-import { Panel, Field, QuietNote, MetricTile, PanelInsight } from "@/components/Panel";
+import { Panel, Field, QuietNote, MetricTile, PanelInsight, StatusPill } from "@/components/Panel";
 import { GLOSSARY } from "@/lib/glossary";
 import { titleCaseName } from "@/lib/format";
 import type { SourcedValue } from "@/lib/provenance";
@@ -24,8 +24,15 @@ export function NearbySitesPanel({
   insight?: ReactNode;
 }) {
   const s = sourced.value;
+  const quiet = s != null && s.count === 0;
   return (
-    <Panel title={title} icon={icon} sourced={sourced}>
+    <Panel
+      title={title}
+      icon={icon}
+      sourced={sourced}
+      collapsible={quiet}
+      pill={quiet ? <StatusPill tone="good">None nearby</StatusPill> : undefined}
+    >
       {!s ? (
         <Unavailable source={sourced.source} />
       ) : s.count === 0 ? (
