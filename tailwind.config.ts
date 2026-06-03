@@ -23,13 +23,13 @@ export default {
           // provenance line — darkened from the guide's #888780 to meet WCAG AA
           // 4.5:1 on both white cards (5.4:1) and the pale-green page (4.7:1).
           faint: "#6B6A66",
-          amber: "#BA7517", // live-data flags + approaching deadlines (reserved)
+          amber: "#9C610D", // live-data flags + approaching deadlines (darkened for WCAG AA text: 4.48:1 on page bg, 5.09 on card)
         },
         // Provenance confidence dots (text label always accompanies the dot).
         confidence: {
           confirmed: "#1D9E75", // green — authoritatively verified
-          live: "#BA7517", // amber — live / needs-verify
-          stale: "#BA7517", // amber — past freshness window (label differs)
+          live: "#9C610D", // amber — live / needs-verify (WCAG AA text)
+          stale: "#9C610D", // amber — past freshness window (label differs)
           unavailable: "#888780", // grey — source unreachable
         },
       },

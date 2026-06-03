@@ -23,6 +23,19 @@ body {
   outline-offset: 2px;
 }
 
+/* Respect reduced-motion preference (WCAG 2.3.3): no pulse, transitions, or
+   smooth scrolling for users who ask for less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @media print {
   /* Appeal petition pages isolate a single .print-area; scope the hide-all rule
      to those pages only (:has) so the full report still prints elsewhere. */
