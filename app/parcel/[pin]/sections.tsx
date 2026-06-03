@@ -94,9 +94,17 @@ export async function GeoHazardsSection({ lat, lon }: { lat: number | null; lon:
   return <GeoHazardsPanel sourced={geo} />;
 }
 
-export async function SoilSection({ lat, lon }: { lat: number | null; lon: number | null }) {
+export async function SoilSection({
+  pin,
+  lat,
+  lon,
+}: {
+  pin: string;
+  lat: number | null;
+  lon: number | null;
+}) {
   const soil = await loadSoil(lat, lon);
-  return <SmelterPlumePanel sourced={soil} />;
+  return <SmelterPlumePanel sourced={soil} parcelId={pin} />;
 }
 
 export async function FloodSection({ lat, lon }: { lat: number | null; lon: number | null }) {

@@ -240,7 +240,7 @@ export default async function ParcelPage({
 
               <div id="soil" className="scroll-mt-4">
                 <Suspense fallback={<PanelSkeleton title="Soil contamination" />}>
-                  <SoilSection lat={lat} lon={lon} />
+                  <SoilSection pin={p.pin} lat={lat} lon={lon} />
                 </Suspense>
               </div>
 

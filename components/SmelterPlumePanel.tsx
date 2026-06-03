@@ -1,6 +1,7 @@
 import { FlaskConical } from "lucide-react";
 import { Unavailable } from "@/components/Unavailable";
 import { Panel, StatusPill, QuietNote, PanelInsight, type PillTone } from "@/components/Panel";
+import { SoilTestEntry } from "@/components/SoilTestEntry";
 import type { SourcedValue } from "@/lib/provenance";
 import type { SmelterPlume } from "@/lib/risk/service";
 
@@ -16,7 +17,13 @@ const TONE: Record<SmelterPlume["severity"], PillTone> = {
  * all of Vashon-Maury sits in the plume. Modeled estimate (not a measured soil
  * test); we label that plainly and point to the free Dirt Alert program.
  */
-export function SmelterPlumePanel({ sourced }: { sourced: SourcedValue<SmelterPlume> }) {
+export function SmelterPlumePanel({
+  sourced,
+  parcelId,
+}: {
+  sourced: SourcedValue<SmelterPlume>;
+  parcelId: string;
+}) {
   const v = sourced.value;
   const tone = v ? TONE[v.severity] : "neutral";
   return (
@@ -34,8 +41,16 @@ export function SmelterPlumePanel({ sourced }: { sourced: SourcedValue<SmelterPl
             This parcel sits in the Tacoma Smelter Plume — soil across Vashon-Maury
             carries arsenic and lead from the former ASARCO smelter
             {v.milesFromSmelter != null ? ` (~${v.milesFromSmelter} mi away)` : ""}.
-            Ecology models the estimated surface-soil arsenic here as{" "}
+            Ecology&apos;s map estimates the surface-soil arsenic here as{" "}
             <span className="font-medium text-pw-text">{v.band}</span>.
+          </p>
+
+          <p className="mt-2 rounded-lg bg-pw-inset px-3 py-2 text-sm text-pw-sub">
+            <span className="font-medium text-pw-ink">This is a map-based estimate,
+            not a measurement.</span>{" "}
+            It&apos;s modeled from distance and wind direction from the smelter —
+            the actual arsenic in your soil can be higher or lower. The only way to
+            know your property is a soil test (Ecology offers it free; see below).
           </p>
 
           {v.severity === "above-action" && (
@@ -63,12 +78,13 @@ export function SmelterPlumePanel({ sourced }: { sourced: SourcedValue<SmelterPl
           )}
 
           <PanelInsight>
-            This is a modeled estimate from distance and wind direction, not a
-            measured soil test. Free soil testing — and yard cleanup for qualifying
-            properties — is available through Ecology&apos;s Dirt Alert program. A
-            simple precaution anywhere in the plume: wash produce, keep bare soil
-            covered, and remove shoes indoors.
+            Free soil testing — and yard cleanup for qualifying properties — is
+            available through Ecology&apos;s Dirt Alert program. A simple precaution
+            anywhere in the plume: wash produce, keep bare soil covered, and remove
+            shoes indoors.
           </PanelInsight>
+
+          <SoilTestEntry parcelId={parcelId} />
         </>
       )}
     </Panel>
