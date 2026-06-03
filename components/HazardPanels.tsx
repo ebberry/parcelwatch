@@ -123,7 +123,10 @@ export function SeismicPanel({ sourced }: { sourced: SourcedValue<SeismicActivit
               {s.largest.place ? ` · ${s.largest.place}` : ""} · {shortDate(s.largest.time)}
             </p>
           )}
-          <ul className="mt-2 divide-y-[0.5px] divide-pw-divider border-t-[0.5px] border-pw-divider">
+          <p className="mt-3 text-xs font-medium uppercase tracking-wide text-pw-faint">
+            {s.count > s.recent.length ? `${s.recent.length} most recent` : "Most recent"}
+          </p>
+          <ul className="mt-1 divide-y-[0.5px] divide-pw-divider border-t-[0.5px] border-pw-divider">
             {s.recent.map((q, i) => (
               <QuakeRow key={q.url ?? i} q={q} />
             ))}

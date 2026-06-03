@@ -26,11 +26,15 @@ gisdata layer to insurance.
 
 - Primary layer: `Property/KingCo_PropertyInfo/MapServer/2` (Parcels). Carries
   `PIN`, `ADDR_FULL`, `KCA_ZONING`, `LOTSQFT`, `APPRLNDVAL`, `APPR_IMPR`, etc.
-- **Not on gismaps** (surface as "not available"): `LAT`/`LON` (derived from the
-  parcel polygon centroid, `outSR=4326`, so hazard/neighborhood panels work),
-  `LEGALDESC`, and the tax sub-fields (`KCTP_TAXYR`, `LEVY*`, `TAX_*`, `ACCNT_NUM`).
-  → **Restored by the Assessor EXTR ingestion** (`EXTR_Parcel`/`EXTR_RPAcct`) —
-  see `docs/specs/living-area-comps.md`.
+- **Not on gismaps**: `LAT`/`LON` (derived from the parcel polygon centroid,
+  `outSR=4326`, so hazard/neighborhood panels work) and the tax sub-fields
+  (`KCTP_TAXYR`, `LEVY*`, `TAX_*`, `ACCNT_NUM`) → **restored by the Assessor EXTR
+  ingestion** (`EXTR_Parcel`/`EXTR_RPAcct`), see `docs/specs/living-area-comps.md`.
+- **`LEGALDESC` DROPPED (2026-06-03):** not on gismaps and not worth a bulk
+  ingest for a surveyor-jargon field nobody acts on. Replaced with the live
+  **`PLAT_NAME`** (subdivision name, e.g. "Vashon Heights Assessors Plat"),
+  shown as "Subdivision (plat)" only when populated (omitted for unplatted /
+  acreage parcels — no permanent "Not available" row).
 - Implemented in `parcel.ts` + `comparables.ts` (`queryParcels` / `searchComparables`
   / `getValuationsByPins` try gismaps first, fall back to the dead gisdata layer).
 - The lesson the brief warned about: **government endpoints change/retire — never

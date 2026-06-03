@@ -37,11 +37,9 @@ describe("kingCountyParcelAdapter.normalize (real fixture)", () => {
     expect(core.presentUse).toBe("Single Family(Res Use/Zone)");
   });
 
-  it("collapses internal whitespace runs in the legal description", () => {
-    expect(core.legalDescription).not.toMatch(/\s{2,}/);
-    expect(core.legalDescription?.startsWith("POR OF LOT 46 VASHON ISLAND")).toBe(
-      true,
-    );
+  it("collapses internal whitespace runs in the plat name", () => {
+    expect(core.platName).not.toMatch(/\s{2,}/);
+    expect(core.platName).toBe("VASHON ISLAND ASSESSORS PLAT");
   });
 
   it("carries lot size, acreage, and zoning as typed values", () => {
@@ -92,7 +90,7 @@ describe("normalize edge cases", () => {
       PREUSE_CODE: null,
       PREUSE_DESC: null,
       PROPTYPE: null,
-      LEGALDESC: null,
+      PLAT_NAME: null,
       PRIMARY_ADDR: null,
       APPRLNDVAL: null,
       APPR_IMPR: null,
@@ -129,7 +127,7 @@ describe("normalize edge cases", () => {
       PREUSE_CODE: null,
       PREUSE_DESC: null,
       PROPTYPE: null,
-      LEGALDESC: null,
+      PLAT_NAME: null,
       PRIMARY_ADDR: null,
       APPRLNDVAL: 100000,
       APPR_IMPR: null, // missing improvement
@@ -162,7 +160,7 @@ describe("normalize edge cases", () => {
       PREUSE_CODE: null,
       PREUSE_DESC: null,
       PROPTYPE: null,
-      LEGALDESC: null,
+      PLAT_NAME: null,
       PRIMARY_ADDR: null,
       APPRLNDVAL: null,
       APPR_IMPR: null,

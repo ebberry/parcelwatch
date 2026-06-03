@@ -61,6 +61,8 @@ export const epaFrsAdapter: DataSourceAdapter<RawEpa, NearbySites> = {
       lat: row.LATITUDE83 ?? null,
       lon: row.LONGITUDE83 ?? null,
     }));
-    return buildNearbySites(raw.origin, sites, { radiusMi: RADIUS_MI, take: 6 });
+    // The total count carries the "how many nearby" signal; only the 3 closest
+    // are worth listing — more is noise (most are routine registrations).
+    return buildNearbySites(raw.origin, sites, { radiusMi: RADIUS_MI, take: 3 });
   },
 };

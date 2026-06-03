@@ -109,7 +109,8 @@ export const usgsEarthquakeAdapter: DataSourceAdapter<RawSeismic, SeismicActivit
       minMagnitude: SEISMIC_MIN_MAGNITUDE,
       count: quakes.length,
       largest,
-      recent: byTimeDesc.slice(0, 5),
+      // The count + largest summarize the year; list only a few most-recent.
+      recent: byTimeDesc.slice(0, 3),
     };
   },
 };

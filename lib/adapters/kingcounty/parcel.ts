@@ -29,7 +29,7 @@ import {
 const GISMAPS_PARCEL_QUERY =
   "https://gismaps.kingcounty.gov/arcgis/rest/services/Property/KingCo_PropertyInfo/MapServer/2/query";
 const GISMAPS_FIELDS =
-  "PIN,MAJOR,MINOR,ADDR_FULL,POSTALCTYNAME,CTYNAME,ZIP5,LOTSQFT,KCA_ACRES,KCA_ZONING,PREUSE_CODE,PREUSE_DESC,PROPTYPE,APPRLNDVAL,APPR_IMPR";
+  "PIN,MAJOR,MINOR,ADDR_FULL,POSTALCTYNAME,CTYNAME,ZIP5,PLAT_NAME,LOTSQFT,KCA_ACRES,KCA_ZONING,PREUSE_CODE,PREUSE_DESC,PROPTYPE,APPRLNDVAL,APPR_IMPR";
 
 /** Retired fallback (gisdata 1722) — kept only as insurance if it's resurrected. */
 const GISDATA_PARCEL_QUERY = `${KC_OPENDATA_BASE}/property__parcel_address_area/MapServer/1722/query`;
@@ -50,7 +50,7 @@ const DETAIL_FIELDS = [
   "PREUSE_CODE",
   "PREUSE_DESC",
   "PROPTYPE",
-  "LEGALDESC",
+  "PLAT_NAME",
   "PRIMARY_ADDR",
   // Slice 2 — assessment/valuation (same row, no extra request).
   "APPRLNDVAL",
@@ -85,7 +85,7 @@ export interface RawParcelAttributes {
   PREUSE_CODE: number | null;
   PREUSE_DESC: string | null;
   PROPTYPE: string | null;
-  LEGALDESC: string | null;
+  PLAT_NAME: string | null;
   PRIMARY_ADDR: number | null;
   APPRLNDVAL: number | null;
   APPR_IMPR: number | null;
@@ -127,7 +127,8 @@ export interface ParcelCore {
   presentUseCode: number | null;
   presentUse: string | null;
   propertyType: string | null;
-  legalDescription: string | null;
+  /** Subdivision / plat name (PLAT_NAME), when the parcel is in a named plat. */
+  platName: string | null;
   assessment: Assessment | null;
 }
 
@@ -226,7 +227,7 @@ function fromFallback(f: ArcgisFeature<Partial<RawParcelAttributes>>): RawParcel
     PREUSE_CODE: a.PREUSE_CODE ?? null,
     PREUSE_DESC: a.PREUSE_DESC ?? null,
     PROPTYPE: a.PROPTYPE ?? null,
-    LEGALDESC: null, // not on the fallback layer
+    PLAT_NAME: a.PLAT_NAME ?? null,
     PRIMARY_ADDR: null,
     APPRLNDVAL: a.APPRLNDVAL ?? null,
     APPR_IMPR: a.APPR_IMPR ?? null,
@@ -320,7 +321,7 @@ export const kingCountyParcelAdapter: DataSourceAdapter<
       presentUseCode: raw.PREUSE_CODE ?? null,
       presentUse: cleanText(raw.PREUSE_DESC),
       propertyType: cleanText(raw.PROPTYPE),
-      legalDescription: cleanText(raw.LEGALDESC),
+      platName: cleanText(raw.PLAT_NAME),
       assessment: buildAssessment(raw),
     };
   },

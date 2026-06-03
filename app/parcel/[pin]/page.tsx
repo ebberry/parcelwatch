@@ -204,7 +204,9 @@ export default async function ParcelPage({
                     }
                     tip={GLOSSARY.propertyType}
                   />
-                  <Field label="Legal description" value={p.legalDescription} />
+                  {p.platName && (
+                    <Field label="Subdivision (plat)" value={titleCaseAddress(p.platName)} />
+                  )}
                 </dl>
               </Panel>
 

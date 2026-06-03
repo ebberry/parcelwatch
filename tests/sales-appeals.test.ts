@@ -25,7 +25,7 @@ function subject(overrides: Partial<ParcelCore> = {}): ParcelCore {
     presentUseCode: 2,
     presentUse: "Single Family(Res Use/Zone)",
     propertyType: "R",
-    legalDescription: null,
+    platName: null,
     assessment: {
       appraisedLand: 414000,
       appraisedImprovement: 658000,

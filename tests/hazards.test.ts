@@ -56,8 +56,8 @@ describe("usgsEarthquakeAdapter.normalize", () => {
     expect(result.largest?.magnitude).toBe(maxMag);
   });
 
-  it("orders 'recent' newest-first and caps at 5", () => {
-    expect(result.recent.length).toBeLessThanOrEqual(5);
+  it("orders 'recent' newest-first and caps at 3", () => {
+    expect(result.recent.length).toBeLessThanOrEqual(3);
     for (let i = 1; i < result.recent.length; i++) {
       expect(
         (result.recent[i - 1].time ?? "") >= (result.recent[i].time ?? ""),
