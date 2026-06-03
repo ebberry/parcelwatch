@@ -31,6 +31,8 @@ import {
   loadCouncil,
   loadRecommendation,
   loadZoning,
+  loadSession,
+  loadOwnerInputs,
 } from "./loaders";
 
 /**
@@ -103,8 +105,16 @@ export async function SoilSection({
   lat: number | null;
   lon: number | null;
 }) {
-  const soil = await loadSoil(lat, lon);
-  return <SmelterPlumePanel sourced={soil} parcelId={pin} />;
+  const [soil, session] = await Promise.all([loadSoil(lat, lon), loadSession()]);
+  const inputs = session ? await loadOwnerInputs(session.userId, pin) : {};
+  return (
+    <SmelterPlumePanel
+      sourced={soil}
+      parcelId={pin}
+      signedIn={!!session}
+      serverSoil={inputs.soil_arsenic_ppm ?? null}
+    />
+  );
 }
 
 export async function FloodSection({ lat, lon }: { lat: number | null; lon: number | null }) {
@@ -151,12 +161,15 @@ export async function SepticSection({ pin }: { pin: string }) {
 }
 
 export async function WaterSection({ pin, lat, lon }: { pin: string; lat: number | null; lon: number | null }) {
-  const water = await loadWater(lat, lon);
+  const [water, session] = await Promise.all([loadWater(lat, lon), loadSession()]);
+  const inputs = session ? await loadOwnerInputs(session.userId, pin) : {};
   return (
     <WaterPanel
       parcelId={pin}
       lookup={water.value}
       provenance={{ source: water.source, fetchedAt: water.fetchedAt, confidence: water.confidence }}
+      signedIn={!!session}
+      serverSaved={inputs.water_system ?? null}
     />
   );
 }

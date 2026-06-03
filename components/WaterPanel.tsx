@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { saveWaterSystem } from "@/app/parcel/[pin]/owner-actions";
 import { Unavailable } from "@/components/Unavailable";
 import { Droplets, Search } from "lucide-react";
 import { Panel } from "@/components/Panel";
@@ -57,33 +58,55 @@ export function WaterPanel({
   parcelId,
   lookup,
   provenance,
+  signedIn = false,
+  serverSaved = null,
 }: {
   parcelId: string;
   lookup: WaterLookup | null;
   provenance: { source: string; fetchedAt: string | null; confidence: Confidence };
+  /** When signed in, the account is the store; otherwise localStorage. */
+  signedIn?: boolean;
+  serverSaved?: Saved | null;
 }) {
   const storageKey = `pw:water:${parcelId}`;
-  const [saved, setSaved] = useState<Saved | null>(null);
+  const [saved, setSaved] = useState<Saved | null>(signedIn ? serverSaved : null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let local: Saved | null = null;
     try {
       const raw = localStorage.getItem(storageKey);
-      if (raw) setSaved(JSON.parse(raw) as Saved);
+      if (raw) local = JSON.parse(raw) as Saved;
     } catch {
       /* ignore */
     }
-  }, [storageKey]);
+    if (signedIn) {
+      if (serverSaved != null) {
+        setSaved(serverSaved);
+        if (local != null) try { localStorage.removeItem(storageKey); } catch {} // now in the account
+      } else if (local != null) {
+        // Migrate a pre-sign-in local value up to the account, then drop local.
+        setSaved(local);
+        void saveWaterSystem(parcelId, local).then(() => {
+          try { localStorage.removeItem(storageKey); } catch {}
+        });
+      }
+    } else if (local != null) {
+      setSaved(local);
+    }
+  }, [storageKey, signedIn, serverSaved, parcelId]);
 
   function persist(s: Saved) {
-    try {
-      localStorage.setItem(storageKey, JSON.stringify(s));
-    } catch {
-      /* ignore */
-    }
+    if (signedIn) void saveWaterSystem(parcelId, s);
+    else
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(s));
+      } catch {
+        /* ignore */
+      }
     setSaved(s);
     setSearchOpen(false);
     setMatches(null);
@@ -91,11 +114,13 @@ export function WaterPanel({
   }
 
   function clearSaved() {
-    try {
-      localStorage.removeItem(storageKey);
-    } catch {
-      /* ignore */
-    }
+    if (signedIn) void saveWaterSystem(parcelId, null);
+    else
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        /* ignore */
+      }
     setSaved(null);
   }
 

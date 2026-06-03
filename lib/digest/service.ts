@@ -92,12 +92,30 @@ export async function runDueDigests(opts?: {
   return result;
 }
 
-/** Build + send one user's digest, then stamp lastDigestAt. Exposed for testing. */
+/** The user's digest preferences/state — for the dashboard email card. */
+export async function getDigestState(
+  userId: string,
+): Promise<{ optOut: boolean; lastDigestAt: Date | null }> {
+  const db = getDb();
+  const [row] = await db
+    .select({ optOut: digestState.optOut, lastDigestAt: digestState.lastDigestAt })
+    .from(digestState)
+    .where(eq(digestState.userId, userId))
+    .limit(1);
+  return { optOut: row?.optOut ?? false, lastDigestAt: row?.lastDigestAt ?? null };
+}
+
+/**
+ * Build + send one user's digest. Stamps lastDigestAt by default (cadence); a
+ * "send me a test digest" from the dashboard passes stamp=false so testing
+ * doesn't suppress the real monthly send.
+ */
 export async function sendUserDigest(
   userId: string,
   email: string,
   since: Date,
   now: Date,
+  opts?: { stamp?: boolean },
 ): Promise<{ sent: boolean; alertCount: number }> {
   const db = getDb();
 
@@ -139,10 +157,12 @@ export async function sendUserDigest(
 
   const { sent } = await sendEmail({ to: email, ...message });
 
-  await db
-    .insert(digestState)
-    .values({ userId, lastDigestAt: now, optOut: false })
-    .onConflictDoUpdate({ target: digestState.userId, set: { lastDigestAt: now } });
+  if (opts?.stamp !== false) {
+    await db
+      .insert(digestState)
+      .values({ userId, lastDigestAt: now, optOut: false })
+      .onConflictDoUpdate({ target: digestState.userId, set: { lastDigestAt: now } });
+  }
 
   return { sent, alertCount: digestAlerts.length };
 }

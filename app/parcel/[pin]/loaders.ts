@@ -11,6 +11,8 @@ import { getParcelBoundary } from "@/lib/adapters/kingcounty/boundary";
 import { getCivicActivity } from "@/lib/watches/service";
 import { resolveArea } from "@/lib/watches/area";
 import { getZoningAnalysis } from "@/lib/zoning/service";
+import { getSession } from "@/lib/auth";
+import { getOwnerInputs } from "@/lib/owner/inputs";
 import type { ParcelCore } from "@/lib/adapters/kingcounty";
 
 /**
@@ -26,6 +28,12 @@ import type { ParcelCore } from "@/lib/adapters/kingcounty";
  */
 
 export const loadParcel = cache((pin: string) => getParcelCore(pin));
+
+/** Session + the signed-in owner's saved inputs for this parcel (per request). */
+export const loadSession = cache(() => getSession());
+export const loadOwnerInputs = cache((userId: string, parcelId: string) =>
+  getOwnerInputs(userId, parcelId),
+);
 
 export const loadFlood = cache((lat: number | null, lon: number | null) =>
   getFloodHazard(lat, lon),

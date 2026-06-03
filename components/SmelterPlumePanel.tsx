@@ -20,9 +20,13 @@ const TONE: Record<SmelterPlume["severity"], PillTone> = {
 export function SmelterPlumePanel({
   sourced,
   parcelId,
+  signedIn = false,
+  serverSoil = null,
 }: {
   sourced: SourcedValue<SmelterPlume>;
   parcelId: string;
+  signedIn?: boolean;
+  serverSoil?: number | null;
 }) {
   const v = sourced.value;
   const tone = v ? TONE[v.severity] : "neutral";
@@ -84,7 +88,7 @@ export function SmelterPlumePanel({
             shoes indoors.
           </PanelInsight>
 
-          <SoilTestEntry parcelId={parcelId} />
+          <SoilTestEntry parcelId={parcelId} signedIn={signedIn} serverValue={serverSoil} />
         </>
       )}
     </Panel>

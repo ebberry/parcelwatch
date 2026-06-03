@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { FlaskConical } from "lucide-react";
+import { saveSoilArsenic } from "@/app/parcel/[pin]/owner-actions";
 
 /**
  * "Upload your number." The plume panel shows a *modeled* arsenic estimate; a
@@ -36,45 +37,73 @@ function advice(ppm: number): { tone: string; text: string } {
   };
 }
 
-export function SoilTestEntry({ parcelId }: { parcelId: string }) {
+export function SoilTestEntry({
+  parcelId,
+  signedIn = false,
+  serverValue = null,
+}: {
+  parcelId: string;
+  /** When signed in, the account is the store; otherwise localStorage. */
+  signedIn?: boolean;
+  /** The account-saved value (signed-in users); SSR-safe initial state. */
+  serverValue?: number | null;
+}) {
   const key = `pw:soil:${parcelId}`;
-  const [saved, setSaved] = useState<number | null>(null);
+  const [saved, setSaved] = useState<number | null>(signedIn ? serverValue : null);
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
 
   useEffect(() => {
+    let local: number | null = null;
     try {
       const raw = localStorage.getItem(key);
       if (raw != null) {
         const n = Number(raw);
-        if (Number.isFinite(n)) setSaved(n);
+        if (Number.isFinite(n)) local = n;
       }
     } catch {
       /* ignore */
     }
-  }, [key]);
+    if (signedIn) {
+      if (serverValue != null) {
+        setSaved(serverValue);
+        if (local != null) try { localStorage.removeItem(key); } catch {} // now in the account
+      } else if (local != null) {
+        // Migrate a pre-sign-in local value up to the account, then drop local.
+        setSaved(local);
+        void saveSoilArsenic(parcelId, local).then(() => {
+          try { localStorage.removeItem(key); } catch {}
+        });
+      }
+    } else if (local != null) {
+      setSaved(local);
+    }
+  }, [key, signedIn, serverValue, parcelId]);
+
+  function persist(n: number | null) {
+    if (signedIn) void saveSoilArsenic(parcelId, n);
+    else
+      try {
+        if (n == null) localStorage.removeItem(key);
+        else localStorage.setItem(key, String(n));
+      } catch {
+        /* ignore */
+      }
+  }
 
   function save(e: React.FormEvent) {
     e.preventDefault();
     const n = Number(draft.trim());
     if (!Number.isFinite(n) || n < 0 || n > 10000) return;
-    try {
-      localStorage.setItem(key, String(n));
-    } catch {
-      /* ignore */
-    }
     setSaved(n);
     setOpen(false);
     setDraft("");
+    persist(n);
   }
 
   function clear() {
-    try {
-      localStorage.removeItem(key);
-    } catch {
-      /* ignore */
-    }
     setSaved(null);
+    persist(null);
   }
 
   if (saved != null) {

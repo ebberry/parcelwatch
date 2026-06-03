@@ -14,8 +14,10 @@ import { getComparables } from "@/lib/comps/service";
 import { getSaleComps } from "@/lib/sales/service";
 import { buildRecommendation } from "@/lib/appeals";
 import { titleCaseAddress } from "@/lib/format";
+import { getDigestState } from "@/lib/digest/service";
 import { AlertsFeed } from "@/components/AlertsFeed";
 import { PropertyCard, type DashboardProperty } from "@/components/PropertyCard";
+import { EmailPreferences } from "@/components/EmailPreferences";
 import { BrandMark } from "@/components/BrandMark";
 
 export const metadata: Metadata = {
@@ -55,10 +57,11 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/signin?callbackUrl=/dashboard");
 
-  const [watched, alerts, unread] = await Promise.all([
+  const [watched, alerts, unread, digest] = await Promise.all([
     getWatchedParcels(session.userId),
     getAlerts(session.userId, 20),
     getUnreadAlertCount(session.userId),
+    getDigestState(session.userId),
   ]);
 
   const properties = await Promise.all(
@@ -181,6 +184,8 @@ export default async function DashboardPage() {
           <AlertsFeed alerts={alerts} />
         )}
       </section>
+
+      <EmailPreferences optOut={digest.optOut} lastDigestAt={digest.lastDigestAt} />
     </main>
   );
 }

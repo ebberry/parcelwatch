@@ -173,3 +173,21 @@ export const digestState = pgTable("digest_state", {
   lastDigestAt: timestamp("last_digest_at", { withTimezone: true }),
   optOut: boolean("opt_out").notNull().default(false),
 });
+
+/**
+ * Owner-entered data tied to an account + parcel — the soil-test number, the
+ * saved water system, and (later) the improvements log. Keyed by (user, parcel,
+ * key) with a JSON value so it's extensible. Anonymous users keep these in
+ * localStorage; on sign-in we migrate them up so they sync across devices.
+ */
+export const ownerInputs = pgTable(
+  "owner_inputs",
+  {
+    userId: text("user_id").notNull(),
+    parcelId: text("parcel_id").notNull(),
+    key: text("key").notNull(),
+    value: jsonb("value").$type<unknown>(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.userId, t.parcelId, t.key] }) }),
+);
