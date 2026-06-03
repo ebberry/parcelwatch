@@ -7,6 +7,7 @@ import {
 } from "@/lib/watches/queue";
 import { runAllWatches } from "@/lib/watches/engine";
 import { ingestResBldg } from "@/lib/ingest/resbldg";
+import { runDueDigests } from "@/lib/digest/service";
 
 /**
  * Watch poller worker. Run with: `npm run worker`.
@@ -16,6 +17,16 @@ import { ingestResBldg } from "@/lib/ingest/resbldg";
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Send monthly "what changed" digests to users who are due. Non-fatal. */
+async function tickDigests() {
+  try {
+    const r = await runDueDigests();
+    console.log(`[digest] ${JSON.stringify(r)}`);
+  } catch (err) {
+    console.error("[digest] run failed (will retry tomorrow):", (err as Error).message);
+  }
+}
 
 /** Refresh living-area sqft from the weekly bulk extract. Non-fatal on failure. */
 async function refreshResBldg() {
@@ -48,6 +59,11 @@ async function main() {
   // Ingest living-area sqft now (non-blocking) and daily thereafter.
   void refreshResBldg();
   setInterval(() => void refreshResBldg(), DAY_MS).unref();
+
+  // Tick the monthly digest daily — per-user lastDigestAt enforces cadence, so
+  // a daily tick only emails users who are actually due.
+  void tickDigests();
+  setInterval(() => void tickDigests(), DAY_MS).unref();
 }
 
 main().catch((err) => {

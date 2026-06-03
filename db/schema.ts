@@ -161,3 +161,15 @@ export const verificationTokens = pgTable(
   },
   (t) => ({ pk: primaryKey({ columns: [t.identifier, t.token] }) }),
 );
+
+/**
+ * Per-user digest state — the recurring-value loop. `lastDigestAt` enforces the
+ * monthly cadence (we only send when it's been ~a month); `optOut` honors the
+ * unsubscribe link (CAN-SPAM). Keyed by user id; separate from the Auth.js
+ * `user` table so the adapter schema stays untouched.
+ */
+export const digestState = pgTable("digest_state", {
+  userId: text("user_id").primaryKey(),
+  lastDigestAt: timestamp("last_digest_at", { withTimezone: true }),
+  optOut: boolean("opt_out").notNull().default(false),
+});

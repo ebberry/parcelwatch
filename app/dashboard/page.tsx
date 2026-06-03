@@ -110,6 +110,31 @@ export default async function DashboardPage() {
         <p className="mt-1 text-xs text-pw-faint">Signed in as {session.email}</p>
       </header>
 
+      {/* Lead with what changed — the reason to come back. */}
+      <section className="mb-6">
+        {unread > 0 ? (
+          <a
+            href="#changed"
+            className="block rounded-xl border-[0.5px] border-pw-amber/40 bg-[#FBF4E8] px-4 py-3 transition-colors hover:bg-[#F8EEDC]"
+          >
+            <p className="text-sm font-medium text-pw-ink">
+              {unread} new update{unread === 1 ? "" : "s"} since you last looked
+            </p>
+            <p className="mt-0.5 text-sm text-pw-sub">
+              See what&apos;s changed around your propert
+              {properties.length === 1 ? "y" : "ies"} →
+            </p>
+          </a>
+        ) : (
+          <div className="rounded-xl border-[0.5px] border-pw-border bg-pw-inset px-4 py-3">
+            <p className="text-sm text-pw-sub">
+              You&apos;re all caught up — nothing new since your last visit. We send
+              a monthly summary by email and keep watching in between.
+            </p>
+          </div>
+        )}
+      </section>
+
       {properties.length === 0 ? (
         <section className="rounded-xl border-[0.5px] border-pw-border bg-pw-card p-6 text-center">
           <Home className="mx-auto mb-3 h-10 w-10 text-pw-accent/40" strokeWidth={1.25} aria-hidden="true" />
@@ -135,7 +160,7 @@ export default async function DashboardPage() {
       )}
 
       {/* What's changed */}
-      <section className="mt-9">
+      <section id="changed" className="mt-9 scroll-mt-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-[15px] font-medium text-pw-ink">
             <Bell className="h-[18px] w-[18px] text-pw-accent" strokeWidth={1.75} aria-hidden="true" />
