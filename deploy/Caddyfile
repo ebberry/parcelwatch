@@ -6,3 +6,12 @@
 	encode zstd gzip
 	reverse_proxy web:3000
 }
+
+# Portrait Queue — a separate app/stack on the same box, served on its own
+# subdomain over an auto-provisioned cert. Reaches the portrait-queue container
+# via the shared external "edge" network. Needs a `queue` A record on ebberry.com
+# pointing at this box's static IP. Remove this block to stop serving it.
+queue.ebberry.com {
+	encode zstd gzip
+	reverse_proxy portrait-queue:4500
+}

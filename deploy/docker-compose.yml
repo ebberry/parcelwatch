@@ -19,6 +19,11 @@ services:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    networks:
+      # `default` keeps Caddy talking to `web`; `edge` lets it reach the
+      # separate Portrait Queue stack's container (see that repo's docs/DEPLOY.md).
+      - default
+      - edge
     depends_on:
       - web
 
@@ -75,3 +80,9 @@ volumes:
   redisdata:
   caddy_data:
   caddy_config:
+
+networks:
+  # Shared with the separate Portrait Queue stack. Create once on the box:
+  #   docker network create edge
+  edge:
+    external: true
