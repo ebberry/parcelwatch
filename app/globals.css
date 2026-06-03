@@ -23,23 +23,39 @@ body {
   outline-offset: 2px;
 }
 
-/* Print: show only the petition preview (the .print-area) when printing. */
 @media print {
-  body * {
+  /* Appeal petition pages isolate a single .print-area; scope the hide-all rule
+     to those pages only (:has) so the full report still prints elsewhere. */
+  body:has(.print-area) * {
     visibility: hidden;
   }
-  .print-area,
-  .print-area * {
+  body:has(.print-area) .print-area,
+  body:has(.print-area) .print-area * {
     visibility: visible;
   }
-  .print-area {
+  body:has(.print-area) .print-area {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     border: none;
   }
+
+  /* Chrome that should never print, anywhere. */
   .no-print {
     display: none !important;
+  }
+
+  /* Report: keep cards intact across page breaks and force-expand any collapsed
+     ("all clear") panels so nothing is hidden in the saved PDF. */
+  section[aria-label],
+  details {
+    break-inside: avoid;
+  }
+  details > div {
+    display: block !important;
+  }
+  details summary {
+    cursor: default;
   }
 }

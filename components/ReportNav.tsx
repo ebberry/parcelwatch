@@ -47,7 +47,7 @@ export function ReportNav({ sections }: { sections: { id: string; label: string 
   return (
     <nav
       aria-label="Report sections"
-      className="sticky top-0 z-20 -mx-5 mb-5 border-b-[0.5px] border-pw-divider bg-pw-bg/85 px-5 py-2 backdrop-blur-sm"
+      className="no-print sticky top-0 z-20 -mx-5 mb-5 border-b-[0.5px] border-pw-divider bg-pw-bg/85 px-5 py-2 backdrop-blur-sm"
     >
       <ul className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {sections.map((s) => {

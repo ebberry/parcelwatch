@@ -22,6 +22,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { PanelSkeleton, SummarySkeleton } from "@/components/PanelSkeleton";
 import { ReportNav } from "@/components/ReportNav";
+import { PrintReportButton } from "@/components/PrintReportButton";
 import { groupSlug } from "@/lib/report/groups";
 import { loadParcel } from "./loaders";
 import {
@@ -82,7 +83,7 @@ export default async function ParcelPage({
 
   return (
     <main id="main" className="mx-auto max-w-2xl px-5 py-8">
-      <div className="flex items-center justify-between">
+      <div className="no-print flex items-center justify-between">
         <Link
           href="/"
           className="inline-flex items-center gap-1 text-sm text-pw-green hover:underline"
@@ -90,13 +91,16 @@ export default async function ParcelPage({
           <ChevronLeft className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
           New search
         </Link>
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-1.5 text-sm text-pw-sub hover:text-pw-green"
-        >
-          <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
-          My dashboard
-        </Link>
+        <div className="flex items-center gap-4">
+          <PrintReportButton />
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-pw-sub hover:text-pw-green"
+          >
+            <Bell className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+            My dashboard
+          </Link>
+        </div>
       </div>
 
       {!p ? (
@@ -278,9 +282,11 @@ export default async function ParcelPage({
               </div>
             </ReportGroup>
 
-            <Suspense fallback={null}>
-              <WatchSection pin={p.pin} />
-            </Suspense>
+            <div className="no-print">
+              <Suspense fallback={null}>
+                <WatchSection pin={p.pin} />
+              </Suspense>
+            </div>
 
             <section
               aria-label="Official county record"
