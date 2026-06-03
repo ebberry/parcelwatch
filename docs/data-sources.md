@@ -92,12 +92,28 @@ Save a full raw response as a fixture under `/tests` when building the adapter.
 - Use this when you need authoritative parcel **geometry** by PIN (e.g. PostGIS
   ingest, radius queries). For attributes, prefer layer 1722 above.
 
-### Zoning polygons — `planning__zoning_area` (MapServer), layer **450**
-
-- Geometry `esriGeometryPolygon` · maxRecordCount 1000 · JSON/geoJSON.
-- Authoritative **planning** zoning (vs the Assessor's `KCA_ZONING`). For the
-  Phase 2 zoning engine: spatial-intersect the parcel point with this layer.
-- Field names not yet pulled — verify the zoning-code field before Phase 2.
+### ⭐ Zoning — authoritative planning layer (FIXED 2026-06-03)
+**Bug fixed:** the report previously used the **Assessor's `KCA_ZONING`** attribute
+as the zoning code. That field is unreliable as legal zoning, and *inside cities
+it stores the city's code* (e.g. a Seattle parcel reads "NR3"). Feeding that into
+our King County Code (Title 21A) engine produced standards that don't apply —
+the likely cause of a user's "this zoning is wrong" report.
+- ✅ **Now point-in-polygon against the planning service (keyless):**
+  `https://gismaps.kingcounty.gov/arcgis/rest/services/Planning/KingCo_Zoning/MapServer`
+  (the gisdata `planning__zoning_area`/450 copy is retired with the rest of
+  OpenDataPortal).
+  - **Layer 1 "King County zoning":** `CURRZONE` (current zone, e.g. "RA-2.5";
+    **null inside cities**), `POTENTIAL` (planned future zone).
+  - **Layer 0 "Incorporated areas":** `CITYNAME`/`JURIS` — if a point hits here,
+    the parcel is inside that city and **King County does not set its zoning**.
+  - Query both with `geometry=lon,lat&inSR=4326&spatialRel=esriSpatialRelIntersects`.
+- **Logic** (`lib/adapters/kingcounty/zoning.ts`, `lib/zoning/service.ts`):
+  incorporated → show "City of {name} zoning, Title 21A N/A" + the Assessor's
+  recorded city code as a *labeled hint* (verify with the city); unincorporated →
+  analyze the authoritative `CURRZONE` against Title 21A; source down → unavailable.
+  We no longer trust `KCA_ZONING` as the zoning of record.
+- Verified live: Vashon `0221029065` → CURRZONE "RA-2.5" (full RA analysis);
+  Seattle `9906000005` → incorporated (CITYNAME "Seattle"), county engine skipped.
 
 ### ⚠️ Trap — `property__realprop_area` (MapServer), layer **1289**
 

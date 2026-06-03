@@ -1,5 +1,26 @@
 import { describe, it, expect } from "vitest";
-import { parseZone, analyzeZoning } from "@/lib/zoning";
+import { parseZone, analyzeZoning, incorporatedAnalysis } from "@/lib/zoning";
+
+describe("incorporatedAnalysis — city parcels don't get King County rules", () => {
+  it("names the city, asserts no county standards, and flags Title 21A as N/A", () => {
+    const z = incorporatedAnalysis("Seattle", "NR3");
+    expect(z.governedBy).toBe("Seattle");
+    expect(z.recognized).toBe(false);
+    expect(z.answers).toHaveLength(0);
+    expect(z.standards).toHaveLength(0);
+    expect(z.notes.join(" ")).toMatch(/City of Seattle/);
+    expect(z.notes.join(" ")).toMatch(/Title 21A does not apply/i);
+    // The Assessor's recorded city code is surfaced only as a labeled hint.
+    expect(z.notes.join(" ")).toMatch(/NR3/);
+  });
+
+  it("works without a recorded code", () => {
+    const z = incorporatedAnalysis("Burien");
+    expect(z.governedBy).toBe("Burien");
+    expect(z.zoneCode).toBe("—");
+    expect(z.notes.join(" ")).not.toMatch(/records list/);
+  });
+});
 
 function find(answers: ReturnType<typeof analyzeZoning>["answers"], q: RegExp) {
   const a = answers.find((x) => q.test(x.question));

@@ -10,6 +10,7 @@ import { getSepticStatus } from "@/lib/adapters/kingcounty/septic";
 import { getParcelBoundary } from "@/lib/adapters/kingcounty/boundary";
 import { getCivicActivity } from "@/lib/watches/service";
 import { resolveArea } from "@/lib/watches/area";
+import { getZoningAnalysis } from "@/lib/zoning/service";
 import type { ParcelCore } from "@/lib/adapters/kingcounty";
 
 /**
@@ -49,6 +50,10 @@ export const loadWater = cache((lat: number | null, lon: number | null) =>
 );
 export const loadNeighborhood = cache((lat: number | null, lon: number | null) =>
   getNeighborhoodStats(lat, lon),
+);
+export const loadZoning = cache(
+  (lat: number | null, lon: number | null, acres: number | null, recordedCode: string | null) =>
+    getZoningAnalysis(lat, lon, acres, recordedCode),
 );
 export const loadSeptic = cache((pin: string | null) => getSepticStatus(pin));
 export const loadBoundary = cache((pin: string | null) => getParcelBoundary(pin));

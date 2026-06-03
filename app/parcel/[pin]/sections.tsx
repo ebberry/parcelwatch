@@ -11,6 +11,7 @@ import { SmelterPlumePanel } from "@/components/SmelterPlumePanel";
 import { FloodPanel, SeismicPanel } from "@/components/HazardPanels";
 import { NearbySitesPanel, NeighborhoodPanel } from "@/components/EnvironmentPanels";
 import { SepticPanel } from "@/components/SepticPanel";
+import { ZoningPanel } from "@/components/ZoningPanel";
 import { WaterPanel } from "@/components/WaterPanel";
 import { ActivityPanel } from "@/components/ActivityPanel";
 import { WatchProperty } from "@/components/WatchProperty";
@@ -29,6 +30,7 @@ import {
   loadBoundary,
   loadCouncil,
   loadRecommendation,
+  loadZoning,
 } from "./loaders";
 
 /**
@@ -118,6 +120,21 @@ export async function EpaSection({ lat, lon }: { lat: number | null; lon: number
       insight="Most EPA-listed sites are routine registrations — fuel tanks, dry cleaners, small facilities — not active contamination. Distance matters: a site next door is worth a closer look; one a mile or two away usually isn't."
     />
   );
+}
+
+export async function ZoningSection({
+  lat,
+  lon,
+  acres,
+  recordedCode,
+}: {
+  lat: number | null;
+  lon: number | null;
+  acres: number | null;
+  recordedCode: string | null;
+}) {
+  const zoning = await loadZoning(lat, lon, acres, recordedCode);
+  return <ZoningPanel sourced={zoning} />;
 }
 
 export async function SepticSection({ pin }: { pin: string }) {

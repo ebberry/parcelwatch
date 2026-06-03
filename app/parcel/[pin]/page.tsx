@@ -10,14 +10,12 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { getTaxCalendar } from "@/lib/tax/service";
-import { getZoningAnalysis } from "@/lib/zoning/service";
 import { censusKeyConfigured } from "@/lib/environment/service";
 import { eRealPropertyUrl } from "@/lib/adapters/kingcounty";
 import { GLOSSARY, decodePropertyType } from "@/lib/glossary";
 import { titleCaseAddress } from "@/lib/format";
 import { Panel, Field, MetricTile, PanelInsight } from "@/components/Panel";
 import { TaxDeadlines } from "@/components/TaxDeadlines";
-import { ZoningPanel } from "@/components/ZoningPanel";
 import { BrandMark } from "@/components/BrandMark";
 import { ProvenanceBadgeFor } from "@/components/ProvenanceBadge";
 import { PanelSkeleton, SummarySkeleton } from "@/components/PanelSkeleton";
@@ -35,6 +33,7 @@ import {
   FloodSection,
   SeismicSection,
   EpaSection,
+  ZoningSection,
   SepticSection,
   WaterSection,
   NeighborhoodSection,
@@ -76,7 +75,6 @@ export default async function ParcelPage({
   const assessment = p?.assessment ?? null;
   const propertyType = decodePropertyType(p?.propertyType ?? null);
   const taxCalendar = getTaxCalendar();
-  const zoning = getZoningAnalysis(p?.zoningCode ?? null, p?.acres ?? null);
   const lat = p?.lat ?? null;
   const lon = p?.lon ?? null;
   const needsCensusKey = !censusKeyConfigured();
@@ -217,7 +215,14 @@ export default async function ParcelPage({
                 </dl>
               </Panel>
 
-              <ZoningPanel sourced={zoning} />
+              <Suspense fallback={<PanelSkeleton title="What can I do here?" />}>
+                <ZoningSection
+                  lat={lat}
+                  lon={lon}
+                  acres={p.acres}
+                  recordedCode={p.zoningCode}
+                />
+              </Suspense>
             </ReportGroup>
 
             <ReportGroup label="Risks & site">

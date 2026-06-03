@@ -45,11 +45,44 @@ export interface ZoningAnalysis {
   zoneName: string;
   /** True when we have detailed verified rules for this zone (RA zones). */
   recognized: boolean;
+  /**
+   * When set, the parcel is inside this incorporated city, which sets its own
+   * zoning — King County's Title 21A does NOT apply. The panel shows a
+   * city-governed message instead of county standards.
+   */
+  governedBy?: string | null;
   answers: ZoningAnswer[];
   standards: ZoningStandard[];
   /** Overlay suffixes found on the code (meaning not asserted). */
   overlays: string[];
   notes: string[];
+}
+
+/**
+ * Build the analysis for a parcel inside an incorporated city. King County
+ * doesn't zone it, so we assert no county standards — we name the city as the
+ * authority and (optionally) surface the county-recorded city code as a hint.
+ */
+export function incorporatedAnalysis(city: string, recordedCode?: string | null): ZoningAnalysis {
+  const notes = [
+    `This parcel is inside the City of ${city}, which sets its own zoning and land-use rules — King County's Title 21A does not apply here. Check with the City of ${city}'s planning or permitting department for the zoning and what it allows.`,
+  ];
+  if (recordedCode) {
+    notes.push(
+      `King County's assessment records list its city zoning as “${recordedCode}”, but the City of ${city} is the authority — confirm there.`,
+    );
+  }
+  return {
+    zoneCode: recordedCode ?? "—",
+    baseZone: recordedCode ?? "—",
+    zoneName: `City of ${city} zoning`,
+    recognized: false,
+    governedBy: city,
+    answers: [],
+    standards: [],
+    overlays: [],
+    notes,
+  };
 }
 
 export const ZONING_DISCLAIMER =

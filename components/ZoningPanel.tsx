@@ -1,6 +1,7 @@
 import { Scale } from "lucide-react";
 import { Panel, StatusPill, type PillTone } from "@/components/Panel";
 import { InfoTip } from "@/components/InfoTip";
+import { Unavailable } from "@/components/Unavailable";
 import { GLOSSARY } from "@/lib/glossary";
 import type { SourcedValue } from "@/lib/provenance";
 import {
@@ -40,9 +41,34 @@ function AnswerRow({ answer }: { answer: ZoningAnswer }) {
 export function ZoningPanel({ sourced }: { sourced: SourcedValue<ZoningAnalysis> }) {
   const z = sourced.value;
   return (
-    <Panel title="What can I do here?" icon={Scale} sourced={sourced}>
+    <Panel
+      title="What can I do here?"
+      icon={Scale}
+      sourced={sourced}
+      pill={
+        z?.governedBy ? (
+          <StatusPill tone="neutral">City-zoned</StatusPill>
+        ) : undefined
+      }
+    >
       {!z ? (
-        <p className="text-sm text-pw-faint">Zoning data unavailable.</p>
+        <Unavailable source={sourced.source} />
+      ) : z.governedBy ? (
+        // Parcel is inside a city — King County's Title 21A doesn't apply.
+        <>
+          <p className="text-sm text-pw-sub">
+            This parcel is in the{" "}
+            <span className="font-medium text-pw-ink">City of {z.governedBy}</span>.
+          </p>
+          {z.notes.map((n) => (
+            <p key={n} className="mt-2 text-sm text-pw-sub">
+              {n}
+            </p>
+          ))}
+          <p className="mt-3 border-t-[0.5px] border-pw-divider pt-3 text-xs text-pw-faint">
+            {ZONING_DISCLAIMER}
+          </p>
+        </>
       ) : (
         <>
           <p className="mb-2 text-sm text-pw-sub">
